@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aplikasi Penilaian Siswa SD - Mobile First</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- SheetJS (xlsx) for Excel Export & Import -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Desktop Presentation Layer (Smooth vertical scrollable container) -->
+  <div class="desktop-canvas">
+    
+    <!-- Smartphone Modern Bezel Frame -->
+    <div class="smartphone-frame">
+      
+      <!-- Top Camera Notch / Dynamic Island -->
+      <div class="smartphone-notch">
+        <div class="notch-camera"></div>
+      </div>
+
+      <!-- Mobile Screen (Animated Stars Background clipped inside) -->
+      <div class="mobile-screen" id="mobile-screen">
+        
+        <!-- Glowing Stars Canvas Background -->
+        <canvas id="stars-canvas"></canvas>
+
+        <!-- Main Application UI -->
+        <div class="app-container">
+          
+          <!-- Top Application Header with Custom School Logo -->
+          <header class="app-header">
+            <div class="header-school-info">
+              <div class="app-logo-badge" id="hdr-logo-box">🏫</div>
+              <div class="header-text-block">
+                <span class="header-school-name" id="hdr-school-name">SD NEGERI 01 UPT</span>
+                <span class="header-mapel-info" id="hdr-mapel-info">Bahasa Indonesia</span>
+              </div>
+            </div>
+            <div class="header-actions">
+              <button class="class-badge-btn" id="btn-edit-rombel" title="Pilih & Edit Rombel / Kelas">
+                <span id="hdr-class-name">📚 Kelas 5 Umar</span>
+                <span>✏️</span>
+              </button>
+              <div class="semester-badge sem-1-badge" id="hdr-semester-badge" title="Klik untuk berpindah Semester">
+                <span id="hdr-sem-text">📘 S1</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Scrollable SPA View Container -->
+          <main class="app-view-body">
+
+            <!-- ================= VIEW 1: BERANDA / DASHBOARD ================= -->
+            <section id="view-dashboard" class="spa-view active">
+              
+              <!-- Hero Card -->
+              <div class="glass-card hero-card">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <div class="hero-welcome">Selamat Datang, Guru 👋</div>
+                    <div class="hero-sub" id="dash-school-sub">SD NEGERI 01 UPT</div>
+                  </div>
+                  <div class="app-logo-badge" id="dash-hero-logo" style="width: 44px; height: 44px; font-size: 1.4rem;">🏫</div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                  <button class="chip-item active" id="dash-class-tag">📚 Kelas 5 Umar ✏️</button>
+                  <span class="chip-item" id="dash-sem-tag" style="background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan);">📘 Semester 1</span>
+                </div>
+
+                <div class="progress-container">
+                  <div class="progress-label-row">
+                    <span>Progress Input Nilai</span>
+                    <span id="dash-progress-pct">0%</span>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="dash-progress-fill" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metrics Summary Cards -->
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-icon-box icon-purple">👨‍🎓</div>
+                  <div>
+                    <div class="metric-val" id="dash-count-siswa">0</div>
+                    <div class="metric-label">Total Siswa</div>
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-icon-box icon-cyan">📖</div>
+                  <div>
+                    <div class="metric-val" id="dash-count-lm">4 LM</div>
+                    <div class="metric-label">Lingkup Materi</div>
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-icon-box icon-amber">📝</div>
+                  <div>
+                    <div class="metric-val" id="dash-count-tp">16 TP</div>
+                    <div class="metric-label">Tujuan Pembelajaran</div>
+                  </div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-icon-box icon-emerald">📊</div>
+                  <div>
+                    <div class="metric-val" id="dash-avg-class">0</div>
+                    <div class="metric-label">Rata-rata Kelas</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Big Export Excel Button -->
+              <button class="btn btn-emerald btn-lg btn-block" id="dash-btn-export" style="margin-top: 0.5rem;">
+                <span>📊</span> EXPORT EXCEL
+              </button>
+
+              <!-- Quick Action Card -->
+              <div class="glass-card">
+                <div class="glass-card-title">⚡ Akses Cepat</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                  <button class="btn btn-secondary" onclick="appNav('penilaian')">📝 Input Nilai</button>
+                  <button class="btn btn-secondary" onclick="appNav('rekap')">📊 Rekap Nilai</button>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ================= VIEW 2: DAFTAR SISWA ================= -->
+            <section id="view-siswa" class="spa-view">
+              
+              <!-- Top Student Actions Bar -->
+              <div class="glass-card">
+                <div class="glass-card-title" style="margin-bottom: 0.5rem;">
+                  <span>👨‍🎓 Daftar Siswa</span>
+                  <span id="siswa-rombel-subtitle" style="font-size: 0.725rem; color: var(--accent-cyan);">Kelas 5 Umar</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.75rem;">
+                  <button class="btn btn-emerald" id="btn-import-excel-students">
+                    <span>📥</span> Import Excel
+                  </button>
+                  <button class="btn btn-primary" id="btn-add-student-modal">
+                    <span>+</span> Tambah Manual
+                  </button>
+                </div>
+
+                <!-- Search Box -->
+                <div class="search-box" style="margin-bottom: 0.75rem;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="form-input search-input" id="siswa-search-input" placeholder="Cari nama siswa...">
+                </div>
+
+                <!-- Batch Selection Toolbar -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.25rem; border-bottom: 1px solid var(--card-border); margin-bottom: 0.5rem;">
+                  <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); cursor: pointer;">
+                    <input type="checkbox" id="chk-select-all-students" style="accent-color: var(--primary); cursor: pointer;">
+                    <span>Pilih Semua (<span id="selected-count-badge">0</span>)</span>
+                  </label>
+                  
+                  <div style="display: flex; gap: 0.3rem;">
+                    <button class="btn btn-danger" id="btn-delete-selected-students" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; display: none;">
+                      🗑️ Hapus Terpilih
+                    </button>
+                    <button class="btn btn-secondary" id="btn-clear-all-students" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; color: var(--accent-rose);">
+                      ⚠️ Hapus Semua
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Hidden Excel File Input -->
+                <input type="file" id="excel-student-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+
+                <!-- Student List Output -->
+                <div class="student-list" id="student-list-container">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+            </section>
+
+
+            <!-- ================= VIEW 3: INPUT NILAI ================= -->
+            <section id="view-penilaian" class="spa-view">
+              
+              <!-- Semester Selector Box -->
+              <div class="sem-toggle-box">
+                <button class="sem-toggle-btn active-s1" id="btn-sem-1-select">📘 SEMESTER 1</button>
+                <button class="sem-toggle-btn" id="btn-sem-2-select">📗 SEMESTER 2</button>
+              </div>
+
+              <!-- Lingkup Materi Tab Chips -->
+              <div class="chip-bar" id="lm-chip-bar">
+                <!-- Chips LM 1..4 or 5..8 dynamically generated -->
+              </div>
+
+              <!-- Active LM & TP Header Info -->
+              <div class="glass-card" style="padding: 0.75rem 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="font-weight: 800; font-size: 0.9rem; color: var(--primary-light);" id="active-lm-title-text">Lingkup Materi 1</div>
+                  <button class="btn btn-secondary" id="btn-edit-materi-modal" style="padding: 0.25rem 0.6rem; font-size: 0.7rem;">✏️ Edit Materi / TP</button>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;" id="active-tp-summary-text">TP 1 - TP 4</div>
+              </div>
+
+              <!-- Scoring Cards Output per Student -->
+              <div id="scoring-cards-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Populated dynamically by JS -->
+              </div>
+            </section>
+
+
+            <!-- ================= VIEW 4: REKAP NILAI ================= -->
+            <section id="view-rekap" class="spa-view">
+              
+              <div class="glass-card">
+                <div class="glass-card-title">
+                  <span>📊 Rekapitulasi Nilai</span>
+                  <button class="btn btn-emerald" id="rekap-btn-export" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">📊 Export Excel</button>
+                </div>
+
+                <!-- Semester Tab Chips for Rekap -->
+                <div class="chip-bar" style="margin-bottom: 0.75rem;">
+                  <div class="chip-item active" id="rekap-tab-s1">📘 Rekap Semester 1</div>
+                  <div class="chip-item" id="rekap-tab-s2">📗 Rekap Semester 2</div>
+                </div>
+
+                <!-- Search Input for Rekap -->
+                <div class="search-box" style="margin-bottom: 0.75rem;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="form-input search-input" id="rekap-search-input" placeholder="Cari di rekap...">
+                </div>
+
+                <!-- Scrollable Table -->
+                <div class="rekap-table-wrapper">
+                  <table class="rekap-table" id="rekap-data-table">
+                    <!-- Dynamic Headers & Data populated by JS -->
+                  </table>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ================= VIEW 5: PENGATURAN / IDENTITAS ================= -->
+            <section id="view-pengaturan" class="spa-view">
+              
+              <!-- 1. Custom Icon & Logo Editor Card -->
+              <div class="glass-card">
+                <div class="glass-card-title">🖼️ Logo & Icon Aplikasi</div>
+                
+                <div class="logo-picker-box">
+                  <div class="logo-preview-badge" id="settings-logo-preview">🏫</div>
+                  <div style="flex:1;">
+                    <div style="font-weight: 700; font-size: 0.8rem;">Ganti Logo Header</div>
+                    <div style="font-size: 0.675rem; color: var(--text-dim);">Pilih preset atau unggah gambar sendiri (.png, .jpg, .svg)</div>
+                    
+                    <!-- Preset Icons Bar -->
+                    <div class="preset-icon-bar">
+                      <button class="preset-icon-btn" data-icon="🏫">🏫</button>
+                      <button class="preset-icon-btn" data-icon="🎓">🎓</button>
+                      <button class="preset-icon-btn" data-icon="📚">📚</button>
+                      <button class="preset-icon-btn" data-icon="🏆">🏆</button>
+                      <button class="preset-icon-btn" data-icon="🌟">🌟</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 0.4rem;">
+                  <button class="btn btn-primary btn-block" id="btn-trigger-upload-logo">
+                    <span>📁</span> Upload Gambar Logo
+                  </button>
+                  <button class="btn btn-secondary" id="btn-reset-custom-logo" title="Reset ke Default">🔄</button>
+                </div>
+
+                <!-- Hidden Logo File Input -->
+                <input type="file" id="custom-logo-file-input" accept="image/*" style="display: none;">
+              </div>
+
+              <!-- 2. Identitas Sekolah & Guru Form Card -->
+              <div class="glass-card">
+                <div class="glass-card-title">⚙️ Identitas Sekolah & Guru</div>
+                
+                <form id="form-identity">
+                  <div class="form-group">
+                    <label class="form-label">Nama Sekolah</label>
+                    <input type="text" class="form-input" id="id-nama-sekolah" placeholder="SD .........">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">NPSN</label>
+                    <input type="text" class="form-input" id="id-npsn" placeholder="108.....">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Nama Guru</label>
+                    <input type="text" class="form-input" id="id-nama-guru" placeholder="Nama Guru, S.Pd.">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">NIP / NUPTK Guru</label>
+                    <input type="text" class="form-input" id="id-nip-guru" placeholder="198.....">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Nama Kepala Sekolah</label>
+                    <input type="text" class="form-input" id="id-nama-ks" placeholder="Nama Kepala Sekolah, M.Pd.">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">NIP Kepala Sekolah</label>
+                    <input type="text" class="form-input" id="id-nip-ks" placeholder="197.....">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Mata Pelajaran</label>
+                    <input type="text" class="form-input" id="id-mapel" placeholder="Bahasa Indonesia">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Tahun Pelajaran</label>
+                    <input type="text" class="form-input" id="id-tp-tahun" placeholder="2026/2027">
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-block" style="margin-top: 0.5rem;">💾 Simpan Identitas</button>
+                </form>
+              </div>
+
+              <!-- 3. Pilihan Kelas & Rombel Management Card -->
+              <div class="glass-card">
+                <div class="glass-card-title">📚 Manajemen Rombel Kelas</div>
+                
+                <div class="form-group">
+                  <label class="form-label">Pilih Kelas / Rombel Aktif</label>
+                  <select class="form-input" id="select-active-class-key" style="cursor: pointer;">
+                    <!-- Dynamically populated options for Kelas 4, 5, 6 -->
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Nama Rombel Aktif</label>
+                  <div style="display: flex; gap: 0.4rem;">
+                    <input type="text" class="form-input" id="input-rombel-name-current" style="flex:1;">
+                    <button class="btn btn-secondary" id="btn-save-rombel-inline">✏️ Ubah</button>
+                  </div>
+                </div>
+
+                <button class="btn btn-secondary btn-block" id="btn-open-class-manager" style="margin-top: 0.5rem;">
+                  <span>➕</span> Tambah / Kelola Rombel
+                </button>
+              </div>
+
+              <!-- 4. Danger Zone & Data Backup Card -->
+              <div class="glass-card" style="border-color: rgba(244, 63, 94, 0.2);">
+                <div class="glass-card-title" style="color: var(--accent-rose);">⚠️ Pemeliharaan Data</div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <button class="btn btn-secondary" id="btn-export-backup-json">📥 Backup Data JSON</button>
+                  <button class="btn btn-danger" id="btn-trigger-reset-data">🗑️ Reset Seluruh Data Aplikasi</button>
+                </div>
+              </div>
+
+            </section>
+
+          </main>
+
+          <!-- Floating Bottom Navigation Bar -->
+          <nav class="bottom-nav">
+            <button class="nav-item active" data-view="dashboard">
+              <span class="nav-icon">🏠</span>
+              <span>Beranda</span>
+            </button>
+            <button class="nav-item" data-view="siswa">
+              <span class="nav-icon">👨‍🎓</span>
+              <span>Siswa</span>
+            </button>
+            <button class="nav-item" data-view="penilaian">
+              <span class="nav-icon">📝</span>
+              <span>Penilaian</span>
+            </button>
+            <button class="nav-item" data-view="rekap">
+              <span class="nav-icon">📊</span>
+              <span>Rekap</span>
+            </button>
+            <button class="nav-item" data-view="pengaturan">
+              <span class="nav-icon">⚙️</span>
+              <span>Pengaturan</span>
+            </button>
+          </nav>
+
+        </div> <!-- /.app-container -->
+
+        <!-- Toast Notification Element -->
+        <div id="toast" class="toast">Data berhasil disimpan!</div>
+
+
+        <!-- ================= MODALS ================= -->
+
+        <!-- 1. Edit / Switch Rombel Modal -->
+        <div class="modal-overlay" id="modal-edit-rombel">
+          <div class="modal-card" style="max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+              <span>📚 Pilih & Kelola Rombel</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            
+            <p style="font-size: 0.775rem; color: var(--text-muted);">Pilih Rombel yang ingin diampu:</p>
+            
+            <!-- List of available Rombel grouped by grade level -->
+            <div id="modal-rombel-list-container" style="display: flex; flex-direction: column; gap: 0.65rem;">
+              <!-- Populated dynamically by JS -->
+            </div>
+
+            <div style="border-top: 1px solid var(--card-border); padding-top: 0.75rem; margin-top: 0.25rem;">
+              <div style="font-weight: 700; font-size: 0.8rem; margin-bottom: 0.4rem; color: var(--text-main);">➕ Tambah Rombel Baru</div>
+              <div style="display: flex; gap: 0.4rem; margin-bottom: 0.4rem;">
+                <select class="form-input" id="new-rombel-level-select" style="width: 90px;">
+                  <option value="4">Kelas 4</option>
+                  <option value="5" selected>Kelas 5</option>
+                  <option value="6">Kelas 6</option>
+                </select>
+                <input type="text" class="form-input" id="new-rombel-name-input" placeholder="Contoh: 5 Umar, 5 Hasan" style="flex:1;">
+              </div>
+              <button class="btn btn-primary btn-block" id="btn-add-new-rombel">Tambah Rombel</button>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 0.5rem;">
+              <button class="btn btn-secondary close-modal-btn btn-block">Tutup</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Add Student Modal -->
+        <div class="modal-overlay" id="modal-add-student">
+          <div class="modal-card">
+            <div class="modal-header">
+              <span>+ Tambah Siswa Baru</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nama Lengkap Siswa</label>
+              <input type="text" class="form-input" id="modal-student-name-input" placeholder="Masukkan nama siswa...">
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-primary" id="modal-student-add-btn">Tambah</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Edit Student Modal -->
+        <div class="modal-overlay" id="modal-edit-student">
+          <div class="modal-card">
+            <div class="modal-header">
+              <span>✏️ Edit Nama Siswa</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <input type="hidden" id="modal-edit-student-id">
+            <div class="form-group">
+              <label class="form-label">Nama Lengkap Siswa</label>
+              <input type="text" class="form-input" id="modal-edit-student-name-input">
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-primary" id="modal-student-save-edit-btn">Simpan</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Confirm Delete Single Student Modal -->
+        <div class="modal-overlay" id="modal-confirm-delete-student">
+          <div class="modal-card">
+            <div class="modal-header" style="color: var(--accent-rose);">
+              <span>🗑️ Konfirmasi Hapus</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <input type="hidden" id="modal-delete-student-id">
+            <p style="font-size: 0.825rem; color: var(--text-muted);" id="delete-student-confirm-text">Apakah Anda yakin ingin menghapus siswa ini?</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-danger" id="modal-student-confirm-delete-btn">Hapus Siswa</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Confirm Delete Batch Selected Students Modal -->
+        <div class="modal-overlay" id="modal-confirm-delete-batch">
+          <div class="modal-card">
+            <div class="modal-header" style="color: var(--accent-rose);">
+              <span>🗑️ Hapus Siswa Terpilih</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <p style="font-size: 0.825rem; color: var(--text-muted);" id="delete-batch-confirm-text">Apakah Anda yakin ingin menghapus X siswa yang dipilih?</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-danger" id="modal-batch-confirm-delete-btn">Hapus Terpilih</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Confirm Clear All Students Modal -->
+        <div class="modal-overlay" id="modal-confirm-clear-all">
+          <div class="modal-card">
+            <div class="modal-header" style="color: var(--accent-rose);">
+              <span>⚠️ Hapus Semua Siswa</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <p style="font-size: 0.825rem; color: var(--text-muted);" id="clear-all-confirm-text">Apakah Anda yakin ingin menghapus SELURUH siswa di rombel ini?</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-danger" id="modal-clear-all-confirm-btn">Hapus Semua</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Excel Import Preview Modal -->
+        <div class="modal-overlay" id="modal-excel-import-preview">
+          <div class="modal-card" style="max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+              <span>📥 Impor Siswa dari Excel</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <p style="font-size: 0.775rem; color: var(--text-muted);">
+              Terdeteksi <b id="import-preview-count" style="color: var(--accent-emerald);">0</b> nama siswa dari file Excel:
+            </p>
+
+            <div class="form-group">
+              <label class="form-label">Tujuan Rombel</label>
+              <select class="form-input" id="import-target-rombel-select">
+                <!-- Dynamically populated options -->
+              </select>
+            </div>
+
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 0.5rem; max-height: 180px; overflow-y: auto; font-size: 0.775rem;">
+              <ol id="import-preview-list" style="padding-left: 1.25rem; margin: 0; color: var(--text-main);">
+                <!-- Populated dynamically -->
+              </ol>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 0.5rem;">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-emerald" id="btn-confirm-excel-import">Proses Impor</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Edit LM & TP Titles Modal -->
+        <div class="modal-overlay" id="modal-edit-materi">
+          <div class="modal-card" style="max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+              <span>✏️ Edit Lingkup Materi & TP</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Judul Lingkup Materi</label>
+              <input type="text" class="form-input" id="modal-lm-title-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tujuan Pembelajaran 1 (TP 1)</label>
+              <input type="text" class="form-input" id="modal-tp1-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tujuan Pembelajaran 2 (TP 2)</label>
+              <input type="text" class="form-input" id="modal-tp2-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tujuan Pembelajaran 3 (TP 3)</label>
+              <input type="text" class="form-input" id="modal-tp3-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tujuan Pembelajaran 4 (TP 4)</label>
+              <input type="text" class="form-input" id="modal-tp4-input">
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-primary" id="modal-materi-save-btn">Simpan Materi</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 9. Export Excel Options Modal -->
+        <div class="modal-overlay" id="modal-export-excel">
+          <div class="modal-card">
+            <div class="modal-header">
+              <span>📊 EXPORT EXCEL (.xlsx)</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Pilih format laporan Excel yang ingin diunduh:</p>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <button class="btn btn-secondary btn-block" id="btn-export-opt-s1" style="justify-content: flex-start;">
+                <span>📘</span> Export Semester 1
+              </button>
+              <button class="btn btn-secondary btn-block" id="btn-export-opt-s2" style="justify-content: flex-start;">
+                <span>📗</span> Export Semester 2
+              </button>
+              <button class="btn btn-emerald btn-block" id="btn-export-opt-all" style="justify-content: flex-start;">
+                <span>📚</span> Export Semua Semester (Multi-sheet)
+              </button>
+            </div>
+            <div class="modal-actions" style="margin-top: 0.5rem;">
+              <button class="btn btn-secondary close-modal-btn btn-block">Batal</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10. Confirm Reset Data Modal -->
+        <div class="modal-overlay" id="modal-confirm-reset">
+          <div class="modal-card">
+            <div class="modal-header" style="color: var(--accent-rose);">
+              <span>⚠️ Reset Seluruh Aplikasi</span>
+              <button class="icon-btn close-modal-btn">&times;</button>
+            </div>
+            <p style="font-size: 0.825rem; color: var(--text-muted);">Apakah Anda benar-benar yakin? Seluruh siswa, nilai, dan pengaturan akan dikembalikan ke kondisi awal.</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary close-modal-btn">Batal</button>
+              <button class="btn btn-danger" id="modal-confirm-reset-btn">Reset Sekarang</button>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- /.mobile-screen -->
+    </div> <!-- /.smartphone-frame -->
+
+  </div> <!-- /.desktop-canvas -->
+
+  <!-- App Scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/stars.js"></script>
+  <script src="js/excel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
