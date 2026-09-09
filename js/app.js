@@ -436,8 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       card.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; overflow: hidden; margin-right: 0.5rem;">
-          <input type="checkbox" class="student-chk" data-id="${student.id}" ${isChecked ? 'checked' : ''} style="accent-color: var(--primary); cursor: pointer;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; margin-right: 0.5rem;">
+          <input type="checkbox" class="student-chk" data-id="${student.id}" ${isChecked ? 'checked' : ''} style="accent-color: var(--primary); cursor: pointer; flex-shrink: 0;">
           <div class="student-number">${fullIndex}</div>
           <div class="student-name-text">${escapeHtml(student.name)}</div>
         </div>
@@ -820,6 +820,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   const btnSem1 = document.getElementById('btn-sem-1-select');
   const btnSem2 = document.getElementById('btn-sem-2-select');
+  const penilaianSearchInput = document.getElementById('penilaian-search-input');
+
+  if (penilaianSearchInput) {
+    penilaianSearchInput.addEventListener('input', () => {
+      renderPenilaianView();
+    });
+  }
 
   btnSem1.addEventListener('click', () => {
     appStorage.setActiveSemester(1);
@@ -878,6 +885,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('scoring-cards-container');
     container.innerHTML = '';
 
+    const searchQuery = penilaianSearchInput ? penilaianSearchInput.value.toLowerCase().trim() : '';
+    const filtered = searchQuery ? students.filter(s => s.name.toLowerCase().includes(searchQuery)) : students;
+
     if (students.length === 0) {
       container.innerHTML = `
         <div class="glass-card" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
@@ -887,7 +897,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    students.forEach((student, idx) => {
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="glass-card" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
+          Tidak ada siswa dengan nama "${escapeHtml(searchQuery)}".
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach((student) => {
+      const fullIdx = students.findIndex(s => s.id === student.id) + 1;
       const card = document.createElement('div');
       card.className = 'score-card';
 
@@ -943,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div class="score-card-header">
           <div class="score-student-info">
-            <div class="student-number">${idx + 1}</div>
+            <div class="student-number">${fullIdx}</div>
             <div class="student-name-text">${escapeHtml(student.name)}</div>
           </div>
         </div>
@@ -956,6 +976,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     container.querySelectorAll('.tp-input').forEach(input => {
+      // Auto-scroll card agar nama siswa dan input terlihat jelas saat difokuskan
+      input.addEventListener('focus', () => {
+        const card = input.closest('.score-card');
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+
       input.addEventListener('input', () => {
         const studentId = input.getAttribute('data-student-id');
         const tpIdx = parseInt(input.getAttribute('data-tp-idx'), 10);
@@ -1087,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lmStartIndex = activeRekapSem === 1 ? 0 : 4;
     const lmEndIndex = activeRekapSem === 1 ? 3 : 7;
 
-    let tr1 = `<tr><th rowspan="2">No</th><th rowspan="2">Nama Siswa</th>`;
+    let tr1 = `<tr><th rowspan="2" class="th-no-col">No</th><th rowspan="2" class="th-name-col">Nama Siswa</th>`;
     let tr2 = `<tr>`;
 
     for (let i = lmStartIndex; i <= lmEndIndex; i++) {
@@ -1115,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       filtered.forEach((student, idx) => {
         tableHtml += `<tr>`;
-        tableHtml += `<td>${idx + 1}</td>`;
+        tableHtml += `<td class="td-no-col">${idx + 1}</td>`;
         tableHtml += `<td class="name-col">${escapeHtml(student.name)}</td>`;
 
         for (let lmIndex = lmStartIndex; lmIndex <= lmEndIndex; lmIndex++) {
