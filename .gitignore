@@ -1,6 +1,20 @@
+# Environment variables & secrets (CRITICAL: DO NOT COMMIT TO GIT)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Operating System files
 .DS_Store
 Thumbs.db
+
+# Dependencies & Build outputs
 node_modules/
+.vercel
 *.log
+
+# IDE & Editor files
 .vscode/
 .idea/

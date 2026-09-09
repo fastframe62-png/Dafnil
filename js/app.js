@@ -1010,6 +1010,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('input-rombel-name-current').value = classInfo.name;
     renderAppLogo();
     renderNavIcons();
+
+    if (window.appSupabase) {
+      document.getElementById('input-supabase-url').value = window.appSupabase.config.url || '';
+      document.getElementById('input-supabase-key').value = window.appSupabase.config.key || '';
+      window.appSupabase.testConnection();
+    }
   }
 
   // Preset Icon Bar Listeners
@@ -1120,6 +1126,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+  });
+
+  // Supabase Manual Connection Listener
+  document.getElementById('btn-save-supabase-manual')?.addEventListener('click', async () => {
+    const url = document.getElementById('input-supabase-url').value;
+    const key = document.getElementById('input-supabase-key').value;
+    if (url && key && window.appSupabase) {
+      window.appSupabase.setManualConfig(url, key);
+      showToast('Menghubungkan ke Supabase...');
+      const ok = await window.appSupabase.testConnection();
+      if (ok) {
+        showToast('Berhasil terhubung ke Supabase Cloud! 🟢');
+      } else {
+        alert('Gagal terhubung. Pastikan URL, API Key benar, dan script SQL telah dijalankan di Supabase.');
+      }
+    }
+  });
+
+  document.getElementById('btn-clear-supabase-manual')?.addEventListener('click', () => {
+    if (window.appSupabase) {
+      window.appSupabase.clearManualConfig();
+      document.getElementById('input-supabase-url').value = '';
+      document.getElementById('input-supabase-key').value = '';
+      showToast('Koneksi manual diputus (Mode Lokal)');
+    }
+  });
+
+  // Supabase Push to Cloud
+  document.getElementById('btn-sync-push-cloud')?.addEventListener('click', async () => {
+    if (!window.appSupabase) return;
+    try {
+      showToast('Mengunggah data ke Supabase Cloud...');
+      await window.appSupabase.pushAllToCloud(appStorage);
+      showToast('Seluruh data berhasil diupload ke Supabase Cloud! ☁️');
+    } catch (err) {
+      console.error(err);
+      alert('Gagal upload ke cloud: ' + err.message);
+    }
+  });
+
+  // Supabase Pull from Cloud
+  document.getElementById('btn-sync-pull-cloud')?.addEventListener('click', async () => {
+    if (!window.appSupabase) return;
+    if (!confirm('Unduh data dari Supabase Cloud? Data lokal di perangkat ini akan diperbarui sesuai database cloud.')) return;
+    try {
+      showToast('Mengunduh data dari Supabase Cloud...');
+      await window.appSupabase.pullAllFromCloud(appStorage);
+      syncHeaderInfo();
+      const activeView = document.querySelector('.spa-view.active');
+      if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
+      showToast('Data berhasil diperbarui dari Supabase Cloud! ☁️');
+    } catch (err) {
+      console.error(err);
+      alert('Gagal download dari cloud: ' + err.message);
+    }
   });
 
   document.getElementById('form-identity').addEventListener('submit', (e) => {
