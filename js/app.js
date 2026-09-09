@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     container.querySelectorAll('.delete-rombel-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const key = btn.getAttribute('data-key');
         const name = btn.getAttribute('data-name');
@@ -250,6 +250,11 @@ document.addEventListener('DOMContentLoaded', () => {
           renderRombelManagerModal();
           syncHeaderInfo();
           showToast(`Rombel ${name} dihapus.`);
+
+          if (window.appSupabase && window.appSupabase.isConnected) {
+            window.appSupabase.deleteClassFromCloud(key);
+          }
+
           const activeView = document.querySelector('.spa-view.active');
           if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
         }
@@ -257,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.getElementById('btn-add-new-rombel').addEventListener('click', () => {
+  document.getElementById('btn-add-new-rombel').addEventListener('click', async () => {
     const level = document.getElementById('new-rombel-level-select').value;
     const inputName = document.getElementById('new-rombel-name-input').value.trim();
 
@@ -273,6 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('modal-edit-rombel');
       syncHeaderInfo();
       showToast(`Rombel baru "${fullName}" ditambahkan!`);
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncClassToCloud(newKey, fullName, level);
+        } catch (e) {
+          console.warn('Gagal sync rombel baru ke cloud:', e);
+        }
+      }
 
       const activeView = document.querySelector('.spa-view.active');
       if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
@@ -975,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('modal-edit-materi');
   });
 
-  document.getElementById('modal-materi-save-btn').addEventListener('click', () => {
+  document.getElementById('modal-materi-save-btn').addEventListener('click', async () => {
     const activeLmIdx = appStorage.getActiveLmIndex();
     const lmTitle = document.getElementById('modal-lm-title-input').value;
     const tp1 = document.getElementById('modal-tp1-input').value;
@@ -993,6 +1006,15 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('modal-edit-materi');
       renderPenilaianView();
       showToast('Judul Lingkup Materi & TP berhasil disimpan!');
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          const tps = [tp1.trim(), tp2.trim(), tp3.trim(), tp4.trim()];
+          await window.appSupabase.syncCurriculumLmToCloud(activeLmIdx, lmTitle.trim(), tps);
+        } catch (e) {
+          console.warn('Gagal sync materi ke cloud:', e);
+        }
+      }
     }
   });
 
@@ -1143,13 +1165,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Helper: Kompresi gambar upload agar ringan dan cepat tersimpan di Supabase
+  function compressImageFile(file, maxWidth, maxHeight, callback) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/png', 0.85);
+        callback(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // Preset Icon Bar Listeners
   document.querySelectorAll('.preset-icon-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const icon = btn.getAttribute('data-icon');
       appStorage.setCustomIcon(icon);
       renderAppLogo();
       showToast('Icon diperbarui!');
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+        } catch (e) {
+          console.warn('Gagal sync icon ke cloud:', e);
+        }
+      }
     });
   });
 
@@ -1166,25 +1230,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran gambar logo terlalu besar. Harap gunakan gambar berukuran maksimal 2MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file gambar terlalu besar. Harap gunakan gambar maksimal 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const dataUrl = evt.target.result;
+    showToast('Memproses & mengunggah logo... ⏳');
+    compressImageFile(file, 256, 256, async (dataUrl) => {
       appStorage.setCustomIcon(dataUrl);
       renderAppLogo();
       showToast('Logo berhasil diunggah! 🖼️');
-    };
-    reader.readAsDataURL(file);
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+          showToast('✅ Logo tersimpan di database Supabase!');
+        } catch (e) {
+          console.warn('Gagal sync logo ke cloud:', e);
+        }
+      }
+    });
   });
 
-  document.getElementById('btn-reset-custom-logo').addEventListener('click', () => {
+  document.getElementById('btn-reset-custom-logo').addEventListener('click', async () => {
     appStorage.setCustomIcon('🏫');
     renderAppLogo();
     showToast('Icon di-reset ke bawaan');
+
+    if (window.appSupabase && window.appSupabase.isConnected) {
+      try {
+        await window.appSupabase.syncIdentityToCloud(appStorage);
+      } catch (e) {
+        console.warn('Gagal sync reset logo ke cloud:', e);
+      }
+    }
   });
 
   // Nav Icon Upload & Reset Listeners
@@ -1206,28 +1285,43 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = e.target.files[0];
       if (!file || !currentTargetNavKey) return;
 
-      if (file.size > 1.5 * 1024 * 1024) {
-        alert('Ukuran icon terlalu besar. Maksimal 1.5MB.');
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran icon terlalu besar. Maksimal 5MB.');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const dataUrl = evt.target.result;
+      showToast('Memproses icon... ⏳');
+      compressImageFile(file, 128, 128, async (dataUrl) => {
         appStorage.setNavIcon(currentTargetNavKey, dataUrl);
         renderNavIcons();
         showToast(`Icon ${currentTargetNavKey.toUpperCase()} berhasil diubah!`);
-      };
-      reader.readAsDataURL(file);
+
+        if (window.appSupabase && window.appSupabase.isConnected) {
+          try {
+            await window.appSupabase.syncIdentityToCloud(appStorage);
+            showToast(`✅ Icon ${currentTargetNavKey.toUpperCase()} tersimpan di database Supabase!`);
+          } catch (e) {
+            console.warn('Gagal sync nav icon ke cloud:', e);
+          }
+        }
+      });
     });
   }
 
   const btnResetAllNavIcons = document.getElementById('btn-reset-all-nav-icons');
   if (btnResetAllNavIcons) {
-    btnResetAllNavIcons.addEventListener('click', () => {
+    btnResetAllNavIcons.addEventListener('click', async () => {
       appStorage.resetNavIcons();
       renderNavIcons();
       showToast('Seluruh icon menu dikembalikan ke bawaan');
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+        } catch (e) {
+          console.warn('Gagal sync reset nav icons ke cloud:', e);
+        }
+      }
     });
   }
 
@@ -1308,8 +1402,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('form-identity').addEventListener('submit', (e) => {
+  document.getElementById('form-identity').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = document.querySelector('#form-identity button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Menyimpan ke Cloud... ⏳';
+    }
+
     const updated = {
       namaSekolah: document.getElementById('id-nama-sekolah').value.trim(),
       npsn: document.getElementById('id-npsn').value.trim(),
@@ -1323,7 +1423,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     appStorage.updateIdentity(updated);
     syncHeaderInfo();
-    showToast('Identitas Sekolah & Guru disimpan!');
+
+    let cloudSaved = false;
+    let cloudErrorMsg = '';
+
+    if (window.appSupabase) {
+      if (!window.appSupabase.isConnected) {
+        await window.appSupabase.testConnection();
+      }
+      if (window.appSupabase.isConnected) {
+        try {
+          showToast('Menyimpan ke database Supabase... ⏳');
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+          cloudSaved = true;
+        } catch (err) {
+          console.error('Gagal simpan identitas ke Supabase:', err);
+          cloudErrorMsg = err.message || 'Error koneksi database';
+        }
+      }
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '💾 Simpan Identitas';
+    }
+
+    if (cloudSaved) {
+      showToast('✅ Identitas Sekolah berhasil tersimpan di database Supabase & Lokal! 🎉');
+    } else if (cloudErrorMsg) {
+      showToast(`⚠️ Tersimpan di lokal, gagal sinkron database: ${cloudErrorMsg}`, 5000);
+    } else {
+      showToast('Identitas Sekolah & Guru disimpan di memori lokal!');
+    }
   });
 
   document.getElementById('select-active-class-key').addEventListener('change', (e) => {
@@ -1334,13 +1465,22 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`Aktif: ${appStorage.getClassInfo(newClassKey).name}`);
   });
 
-  document.getElementById('btn-save-rombel-inline').addEventListener('click', () => {
+  document.getElementById('btn-save-rombel-inline').addEventListener('click', async () => {
     const classKey = appStorage.getActiveClassKey();
     const newName = document.getElementById('input-rombel-name-current').value;
     if (newName.trim()) {
       appStorage.updateRombelName(classKey, newName.trim());
       syncHeaderInfo();
       showToast('Nama Rombel berhasil diubah!');
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          const cInfo = appStorage.getClassInfo(classKey);
+          await window.appSupabase.syncClassToCloud(classKey, newName.trim(), cInfo.level);
+        } catch (e) {
+          console.warn('Gagal sync nama rombel ke cloud:', e);
+        }
+      }
     }
   });
 
@@ -1360,11 +1500,21 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('modal-confirm-reset');
   });
 
-  document.getElementById('modal-confirm-reset-btn').addEventListener('click', () => {
+  document.getElementById('modal-confirm-reset-btn').addEventListener('click', async () => {
     appStorage.resetAllData();
     closeModal('modal-confirm-reset');
     appNav('dashboard');
     showToast('Aplikasi telah di-reset ke data bawaan');
+
+    if (window.appSupabase && window.appSupabase.isConnected) {
+      showToast('Mereset database cloud... ⏳');
+      try {
+        await window.appSupabase.syncResetAllToCloud(appStorage);
+        showToast('Database cloud telah direset ke data awal! ☁️');
+      } catch (e) {
+        console.warn('Gagal reset data di cloud:', e);
+      }
+    }
   });
 
 

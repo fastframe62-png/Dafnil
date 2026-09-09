@@ -316,6 +316,120 @@ class SupabaseManager {
   }
 
   // =========================================================================
+  // REAL-TIME SETTINGS & IDENTITY SYNC (PENGATURAN)
+  // =========================================================================
+
+  /**
+   * Sinkronkan Identitas Sekolah & Guru (termasuk custom_icon dan nav_icons) ke Supabase
+   */
+  async syncIdentityToCloud(storage) {
+    if (!this.client) {
+      throw new Error('Koneksi Supabase belum aktif.');
+    }
+    if (!this.isConnected) {
+      const ok = await this.testConnection();
+      if (!ok) throw new Error('Koneksi ke Supabase gagal. Periksa izin akses (RLS) atau jaringan.');
+    }
+
+    const identity = storage.getIdentity();
+    const navIcons = storage.getNavIcons();
+
+    const { error } = await this.client.from('app_identity').upsert({
+      id: 'default',
+      nama_sekolah: identity.namaSekolah || '',
+      npsn: identity.npsn || '',
+      nama_guru: identity.namaGuru || '',
+      nip_guru: identity.nipGuru || '',
+      nama_kepala_sekolah: identity.namaKepalaSekolah || '',
+      nip_kepala_sekolah: identity.nipKepalaSekolah || '',
+      mata_pelajaran: identity.mataPelajaran || '',
+      tahun_pelajaran: identity.tahunPelajaran || '',
+      custom_icon: identity.customIcon || '🏫',
+      nav_icons: navIcons || {},
+      updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('Gagal simpan app_identity:', error);
+      throw new Error('Gagal menyimpan identitas ke database: ' + error.message);
+    }
+    return true;
+  }
+
+  /**
+   * Sinkronkan penambahan / perubahan Rombel ke Supabase app_classes
+   */
+  async syncClassToCloud(classId, className, classLevel) {
+    if (!this.client) return;
+    if (!this.isConnected) {
+      const ok = await this.testConnection();
+      if (!ok) return;
+    }
+
+    const { error } = await this.client.from('app_classes').upsert({
+      id: classId,
+      name: className,
+      level: String(classLevel || '5'),
+      updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('Gagal upsert app_classes:', error);
+      throw new Error('Gagal menyimpan rombel ke database: ' + error.message);
+    }
+    return true;
+  }
+
+  /**
+   * Hapus Rombel dari Supabase app_classes
+   */
+  async deleteClassFromCloud(classId) {
+    if (!this.client || !this.isConnected || !classId) return;
+    try {
+      const { error } = await this.client.from('app_classes').delete().eq('id', classId);
+      if (error) console.error('Gagal hapus rombel di cloud:', error);
+    } catch (e) {
+      console.error('Error deleteClassFromCloud:', e);
+    }
+  }
+
+  /**
+   * Sinkronkan kurikulum LM & TP ke Supabase app_curriculum
+   */
+  async syncCurriculumLmToCloud(lmIndex, name, tps) {
+    if (!this.client) return;
+    if (!this.isConnected) {
+      const ok = await this.testConnection();
+      if (!ok) return;
+    }
+
+    const { error } = await this.client.from('app_curriculum').upsert({
+      lm_index: lmIndex,
+      name: name,
+      tps: tps,
+      updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('Gagal upsert app_curriculum:', error);
+      throw new Error('Gagal menyimpan kurikulum ke database: ' + error.message);
+    }
+    return true;
+  }
+
+  /**
+   * Reset seluruh data di Cloud (Push fresh default state)
+   */
+  async syncResetAllToCloud(storage) {
+    if (!this.client || !this.isConnected) return;
+    try {
+      await this.pushAllToCloud(storage);
+    } catch (e) {
+      console.error('Error syncResetAllToCloud:', e);
+    }
+  }
+
+  // =========================================================================
   // FULL SYNC OPERATIONS (PULL & PUSH)
   // =========================================================================
 
