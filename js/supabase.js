@@ -58,7 +58,7 @@ class SupabaseManager {
     try {
       if (window.supabase && window.supabase.createClient) {
         this.client = window.supabase.createClient(this.config.url, this.config.key);
-        this.testConnection();
+        this.testConnection(true);
       } else {
         console.warn('Supabase JS library belum dimuat.');
         this.updateStatusBadge(false, 'SDK Belum Dimuat');
@@ -69,23 +69,46 @@ class SupabaseManager {
     }
   }
 
-  async testConnection() {
+  async testConnection(autoPullIfCloudData = false) {
     if (!this.client) return false;
     try {
       const { data, error } = await this.client.from('app_classes').select('id').limit(1);
       if (error) {
         console.error('Supabase test connection failed:', error);
         this.isConnected = false;
-        this.updateStatusBadge(false, 'Koneksi Gagal (Cek Tabel)');
+        this.updateStatusBadge(false, 'Koneksi Gagal (Cek RLS/Tabel)');
         return false;
       }
       this.isConnected = true;
       this.updateStatusBadge(true, 'Cloud Terhubung 🟢');
+
+      // Auto-pull data terbaru jika cloud memiliki data siswa
+      if (autoPullIfCloudData && window.appStorage) {
+        this.autoSyncFromCloudOnLoad(window.appStorage);
+      }
+
       return true;
     } catch (err) {
       this.isConnected = false;
       this.updateStatusBadge(false, 'Koneksi Terputus');
       return false;
+    }
+  }
+
+  async autoSyncFromCloudOnLoad(storage) {
+    try {
+      const { count, error } = await this.client.from('app_students').select('*', { count: 'exact', head: true });
+      if (!error && count && count > 0) {
+        console.log(`Supabase memiliki ${count} data siswa. Memuat data cloud terbaru...`);
+        await this.pullAllFromCloud(storage);
+        if (window.syncHeaderInfo) window.syncHeaderInfo();
+        const activeView = document.querySelector('.spa-view.active');
+        if (activeView && window.renderCurrentView) {
+          window.renderCurrentView(activeView.id.replace('view-', ''));
+        }
+      }
+    } catch (e) {
+      console.warn('Auto-sync check skipped:', e);
     }
   }
 
@@ -126,7 +149,174 @@ class SupabaseManager {
   }
 
   // =========================================================================
-  // SYNC OPERATIONS (PULL & PUSH)
+  // REAL-TIME STUDENT & GRADE SYNC (IMPORT & CRUD)
+  // =========================================================================
+
+  /**
+   * Menyimpan / Mengunggah daftar siswa ke Supabase untuk rombel tertentu.
+   * Selalu memastikan tabel app_classes memiliki record rombel tersebut sebelum insert siswa
+   * untuk mencegah Foreign Key constraint violation.
+   */
+  async syncStudentsToCloud(classKey, students, storage) {
+    if (!this.client) {
+      throw new Error('Koneksi Supabase belum aktif. Pastikan URL dan API Key telah diatur.');
+    }
+
+    if (!this.isConnected) {
+      const ok = await this.testConnection();
+      if (!ok) throw new Error('Koneksi ke Supabase gagal. Periksa izin akses (RLS) atau jaringan.');
+    }
+
+    // 1. Pastikan record Rombel ada di app_classes
+    const classInfo = storage ? storage.getClassInfo(classKey) : null;
+    const className = classInfo ? classInfo.name : classKey;
+    const classLevel = classInfo ? String(classInfo.level) : '5';
+
+    const { error: classErr } = await this.client.from('app_classes').upsert({
+      id: classKey,
+      name: className,
+      level: classLevel,
+      updated_at: new Date().toISOString()
+    });
+
+    if (classErr) {
+      console.error('Gagal upsert class di Supabase:', classErr);
+      throw new Error('Gagal mencatat rombel di database: ' + classErr.message);
+    }
+
+    // 2. Siapkan data siswa
+    if (!students || students.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const studentRows = students.map(s => ({
+      id: s.id,
+      class_id: classKey,
+      name: s.name,
+      updated_at: new Date().toISOString()
+    }));
+
+    // 3. Upsert siswa per batch 100
+    for (let i = 0; i < studentRows.length; i += 100) {
+      const chunk = studentRows.slice(i, i + 100);
+      const { error: stdErr } = await this.client.from('app_students').upsert(chunk);
+      if (stdErr) {
+        console.error('Gagal upsert student di Supabase:', stdErr);
+        throw new Error('Gagal menyimpan siswa ke database: ' + stdErr.message);
+      }
+    }
+
+    return { success: true, count: studentRows.length };
+  }
+
+  /**
+   * Tambah 1 siswa baru ke database Supabase
+   */
+  async syncSingleStudentToCloud(classKey, student, storage) {
+    if (!this.client || !this.isConnected || !student) return;
+    try {
+      const classInfo = storage ? storage.getClassInfo(classKey) : null;
+      await this.client.from('app_classes').upsert({
+        id: classKey,
+        name: classInfo ? classInfo.name : classKey,
+        level: classInfo ? String(classInfo.level) : '5',
+        updated_at: new Date().toISOString()
+      });
+
+      const { error } = await this.client.from('app_students').upsert({
+        id: student.id,
+        class_id: classKey,
+        name: student.name,
+        updated_at: new Date().toISOString()
+      });
+      if (error) console.error('Gagal simpan siswa tunggal ke cloud:', error);
+    } catch (e) {
+      console.error('Error syncSingleStudentToCloud:', e);
+    }
+  }
+
+  /**
+   * Update nama siswa di database Supabase
+   */
+  async updateStudentInCloud(studentId, newName) {
+    if (!this.client || !this.isConnected || !studentId) return;
+    try {
+      const { error } = await this.client.from('app_students').update({
+        name: newName,
+        updated_at: new Date().toISOString()
+      }).eq('id', studentId);
+      if (error) console.error('Gagal update siswa di cloud:', error);
+    } catch (e) {
+      console.error('Error updateStudentInCloud:', e);
+    }
+  }
+
+  /**
+   * Hapus 1 siswa dari database Supabase
+   */
+  async deleteStudentFromCloud(studentId) {
+    if (!this.client || !this.isConnected || !studentId) return;
+    try {
+      const { error } = await this.client.from('app_students').delete().eq('id', studentId);
+      if (error) console.error('Gagal hapus siswa di cloud:', error);
+    } catch (e) {
+      console.error('Error deleteStudentFromCloud:', e);
+    }
+  }
+
+  /**
+   * Hapus beberapa siswa (batch) dari database Supabase
+   */
+  async deleteStudentsBatchFromCloud(studentIds) {
+    if (!this.client || !this.isConnected || !studentIds || studentIds.length === 0) return;
+    try {
+      const { error } = await this.client.from('app_students').delete().in('id', studentIds);
+      if (error) console.error('Gagal hapus batch siswa di cloud:', error);
+    } catch (e) {
+      console.error('Error deleteStudentsBatchFromCloud:', e);
+    }
+  }
+
+  /**
+   * Hapus seluruh siswa rombel dari database Supabase
+   */
+  async deleteAllStudentsFromCloud(classKey) {
+    if (!this.client || !this.isConnected || !classKey) return;
+    try {
+      const { error } = await this.client.from('app_students').delete().eq('class_id', classKey);
+      if (error) console.error('Gagal hapus semua siswa di cloud:', error);
+    } catch (e) {
+      console.error('Error deleteAllStudentsFromCloud:', e);
+    }
+  }
+
+  /**
+   * Sinkronkan 1 nilai (TP score) langsung ke database Supabase
+   */
+  async syncSingleGradeToCloud(classKey, semester, studentId, lmIndex, tpIndex, score) {
+    if (!this.client || !this.isConnected) return;
+    try {
+      if (score === null || score === '' || isNaN(score)) {
+        await this.client.from('app_grades').delete()
+          .match({ class_id: classKey, semester: semester, student_id: studentId, lm_index: lmIndex, tp_index: tpIndex });
+      } else {
+        await this.client.from('app_grades').upsert({
+          class_id: classKey,
+          semester: semester,
+          student_id: studentId,
+          lm_index: lmIndex,
+          tp_index: tpIndex,
+          score: Number(score),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'class_id,semester,student_id,lm_index,tp_index' });
+      }
+    } catch (e) {
+      console.warn('Error syncSingleGradeToCloud:', e);
+    }
+  }
+
+  // =========================================================================
+  // FULL SYNC OPERATIONS (PULL & PUSH)
   // =========================================================================
 
   // PUSH: Unggah seluruh data lokal ke Supabase
@@ -143,7 +333,7 @@ class SupabaseManager {
     const grades = state.grades;
 
     // 1. Upsert Identity
-    await this.client.from('app_identity').upsert({
+    const { error: idErr } = await this.client.from('app_identity').upsert({
       id: 'default',
       nama_sekolah: identity.namaSekolah,
       npsn: identity.npsn,
@@ -157,16 +347,18 @@ class SupabaseManager {
       nav_icons: state.navIcons || {},
       updated_at: new Date().toISOString()
     });
+    if (idErr) throw new Error('Gagal simpan Identitas: ' + idErr.message);
 
     // 2. Upsert Classes & Students
     for (const classKey in classes) {
       const c = classes[classKey];
-      await this.client.from('app_classes').upsert({
+      const { error: clsErr } = await this.client.from('app_classes').upsert({
         id: c.id,
         name: c.name,
         level: String(c.level),
         updated_at: new Date().toISOString()
       });
+      if (clsErr) throw new Error(`Gagal simpan Kelas ${c.name}: ` + clsErr.message);
 
       // Students
       if (c.students && c.students.length > 0) {
@@ -176,7 +368,8 @@ class SupabaseManager {
           name: s.name,
           updated_at: new Date().toISOString()
         }));
-        await this.client.from('app_students').upsert(studentRows);
+        const { error: stdErr } = await this.client.from('app_students').upsert(studentRows);
+        if (stdErr) throw new Error(`Gagal simpan Siswa ${c.name}: ` + stdErr.message);
       }
     }
 
@@ -188,7 +381,8 @@ class SupabaseManager {
         tps: lm.tps,
         updated_at: new Date().toISOString()
       }));
-      await this.client.from('app_curriculum').upsert(currRows);
+      const { error: curErr } = await this.client.from('app_curriculum').upsert(currRows);
+      if (curErr) throw new Error('Gagal simpan Kurikulum: ' + curErr.message);
     }
 
     // 4. Upsert Grades
@@ -222,9 +416,10 @@ class SupabaseManager {
       // Upsert in batches of 200
       for (let i = 0; i < gradeRows.length; i += 200) {
         const chunk = gradeRows.slice(i, i + 200);
-        await this.client.from('app_grades').upsert(chunk, {
+        const { error: grdErr } = await this.client.from('app_grades').upsert(chunk, {
           onConflict: 'class_id,semester,student_id,lm_index,tp_index'
         });
+        if (grdErr) throw new Error('Gagal simpan Nilai: ' + grdErr.message);
       }
     }
 

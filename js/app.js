@@ -477,17 +477,27 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('modal-add-student');
   });
 
-  document.getElementById('modal-student-add-btn').addEventListener('click', () => {
+  document.getElementById('modal-student-add-btn').addEventListener('click', async () => {
     const name = document.getElementById('modal-student-name-input').value;
     if (name.trim()) {
-      appStorage.addStudent(name);
+      const classKey = appStorage.getActiveClassKey();
+      const newStd = appStorage.addStudent(name, classKey);
       closeModal('modal-add-student');
       renderStudentView();
       showToast('Siswa berhasil ditambahkan!');
+
+      // Sinkronkan ke Supabase jika terhubung
+      if (window.appSupabase && window.appSupabase.isConnected && newStd) {
+        try {
+          await window.appSupabase.syncSingleStudentToCloud(classKey, newStd, appStorage);
+        } catch (e) {
+          console.warn('Gagal sinkron siswa baru ke cloud:', e);
+        }
+      }
     }
   });
 
-  document.getElementById('modal-student-save-edit-btn').addEventListener('click', () => {
+  document.getElementById('modal-student-save-edit-btn').addEventListener('click', async () => {
     const id = document.getElementById('modal-edit-student-id').value;
     const newName = document.getElementById('modal-edit-student-name-input').value;
     if (id && newName.trim()) {
@@ -495,10 +505,19 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('modal-edit-student');
       renderStudentView();
       showToast('Nama siswa diperbarui!');
+
+      // Sinkronkan ke Supabase jika terhubung
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.updateStudentInCloud(id, newName);
+        } catch (e) {
+          console.warn('Gagal sinkron edit siswa ke cloud:', e);
+        }
+      }
     }
   });
 
-  document.getElementById('modal-student-confirm-delete-btn').addEventListener('click', () => {
+  document.getElementById('modal-student-confirm-delete-btn').addEventListener('click', async () => {
     const id = document.getElementById('modal-delete-student-id').value;
     if (id) {
       appStorage.deleteStudent(id);
@@ -506,6 +525,15 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('modal-confirm-delete-student');
       renderStudentView();
       showToast('Siswa telah dihapus');
+
+      // Sinkronkan ke Supabase jika terhubung
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.deleteStudentFromCloud(id);
+        } catch (e) {
+          console.warn('Gagal sinkron hapus siswa ke cloud:', e);
+        }
+      }
     }
   });
 
@@ -517,12 +545,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('modal-batch-confirm-delete-btn').addEventListener('click', () => {
-    const deletedCount = appStorage.deleteStudentsBatch(Array.from(selectedStudentIds));
+  document.getElementById('modal-batch-confirm-delete-btn').addEventListener('click', async () => {
+    const idsToDelete = Array.from(selectedStudentIds);
+    const deletedCount = appStorage.deleteStudentsBatch(idsToDelete);
     selectedStudentIds.clear();
     closeModal('modal-confirm-delete-batch');
     renderStudentView();
     showToast(`${deletedCount} siswa berhasil dihapus!`);
+
+    // Sinkronkan ke Supabase jika terhubung
+    if (window.appSupabase && window.appSupabase.isConnected && idsToDelete.length > 0) {
+      try {
+        await window.appSupabase.deleteStudentsBatchFromCloud(idsToDelete);
+      } catch (e) {
+        console.warn('Gagal sinkron hapus batch siswa ke cloud:', e);
+      }
+    }
   });
 
   document.getElementById('btn-clear-all-students').addEventListener('click', () => {
@@ -539,13 +577,22 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('modal-confirm-clear-all');
   });
 
-  document.getElementById('modal-clear-all-confirm-btn').addEventListener('click', () => {
+  document.getElementById('modal-clear-all-confirm-btn').addEventListener('click', async () => {
     const classKey = appStorage.getActiveClassKey();
     const count = appStorage.deleteAllStudents(classKey);
     selectedStudentIds.clear();
     closeModal('modal-confirm-clear-all');
     renderStudentView();
     showToast(`Seluruh data (${count} siswa) dikosongkan.`);
+
+    // Sinkronkan ke Supabase jika terhubung
+    if (window.appSupabase && window.appSupabase.isConnected) {
+      try {
+        await window.appSupabase.deleteAllStudentsFromCloud(classKey);
+      } catch (e) {
+        console.warn('Gagal sinkron hapus semua siswa ke cloud:', e);
+      }
+    }
   });
 
 
@@ -611,6 +658,25 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
 
+        // Tampilkan indikator status database Supabase di preview modal
+        const cloudStatusEl = document.getElementById('import-cloud-sync-status');
+        const cloudTextEl = document.getElementById('import-cloud-sync-text');
+        if (cloudStatusEl && cloudTextEl) {
+          if (window.appSupabase && window.appSupabase.isConnected) {
+            cloudStatusEl.style.display = 'flex';
+            cloudStatusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+            cloudStatusEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            cloudStatusEl.style.color = 'var(--accent-emerald)';
+            cloudTextEl.innerHTML = '🟢 <b>Database Cloud Terhubung</b>: Data siswa akan otomatis masuk ke Supabase PostgreSQL & memori lokal.';
+          } else {
+            cloudStatusEl.style.display = 'flex';
+            cloudStatusEl.style.background = 'rgba(245, 158, 11, 0.15)';
+            cloudStatusEl.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            cloudStatusEl.style.color = 'var(--accent-amber)';
+            cloudTextEl.innerHTML = '💾 <b>Mode Lokal</b>: Tersimpan di memori perangkat saat ini. (Hubungkan Supabase di Pengaturan untuk auto-sync database).';
+          }
+        }
+
         openModal('modal-excel-import-preview');
 
       } catch (err) {
@@ -627,28 +693,32 @@ document.addEventListener('DOMContentLoaded', () => {
     let nameColIndex = -1;
     let startRowIndex = 0;
 
-    for (let r = 0; r < Math.min(10, rows.length); r++) {
+    // Scan hingga 25 baris pertama untuk mencari kolom Nama Siswa
+    for (let r = 0; r < Math.min(25, rows.length); r++) {
       const row = rows[r];
       if (!Array.isArray(row)) continue;
 
       for (let c = 0; c < row.length; c++) {
         const val = String(row[c] || '').toLowerCase().trim();
-        if (val.includes('nama') || val.includes('siswa') || val.includes('peserta')) {
-          nameColIndex = c;
-          startRowIndex = r + 1;
-          break;
+        if (val.includes('nama') || val.includes('siswa') || val.includes('peserta') || val.includes('student')) {
+          if (!val.includes('ayah') && !val.includes('ibu') && !val.includes('wali') && !val.includes('sekolah') && !val.includes('guru')) {
+            nameColIndex = c;
+            startRowIndex = r + 1;
+            break;
+          }
         }
       }
       if (nameColIndex !== -1) break;
     }
 
+    // Fallback: cari kolom teks pertama
     if (nameColIndex === -1) {
-      for (let r = 0; r < Math.min(5, rows.length); r++) {
+      for (let r = 0; r < Math.min(10, rows.length); r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
         for (let c = 0; c < row.length; c++) {
           const val = String(row[c] || '').trim();
-          if (val && isNaN(val) && val.length > 2 && !val.toLowerCase().includes('no')) {
+          if (val && isNaN(val) && val.length > 2 && !val.toLowerCase().includes('no') && !val.toLowerCase().includes('nis')) {
             nameColIndex = c;
             startRowIndex = r;
             break;
@@ -660,13 +730,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nameColIndex === -1) nameColIndex = 0;
 
+    const ignoreWords = ['nama', 'siswa', 'peserta', 'daftar', 'no', 'nomor', 'nis', 'nisn', 'l/p', 'jk', 'gender', 'jenis kelamin', 'keterangan', 'status', 'total', 'jumlah', 'rata-rata', 'catatan'];
+
     const names = [];
     for (let r = startRowIndex; r < rows.length; r++) {
       const row = rows[r];
       if (Array.isArray(row) && row[nameColIndex] !== undefined && row[nameColIndex] !== null) {
         const nameStr = String(row[nameColIndex]).trim();
-        if (nameStr && isNaN(nameStr) && !nameStr.toLowerCase().startsWith('nama') && !nameStr.toLowerCase().startsWith('daftar')) {
-          names.push(nameStr);
+        const lower = nameStr.toLowerCase();
+        
+        if (nameStr && isNaN(nameStr) && nameStr.length >= 2) {
+          const isIgnored = ignoreWords.some(w => lower === w || lower.startsWith(w + ' '));
+          if (!isIgnored) {
+            names.push(nameStr);
+          }
         }
       }
     }
@@ -674,16 +751,53 @@ document.addEventListener('DOMContentLoaded', () => {
     return names;
   }
 
-  document.getElementById('btn-confirm-excel-import').addEventListener('click', () => {
+  document.getElementById('btn-confirm-excel-import').addEventListener('click', async () => {
     const targetRombelKey = document.getElementById('import-target-rombel-select').value;
     if (pendingImportNames.length > 0 && targetRombelKey) {
+      const confirmBtn = document.getElementById('btn-confirm-excel-import');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Menyimpan... ⏳';
+
+      // 1. Simpan ke Local Storage
       const count = appStorage.addStudentsBatch(pendingImportNames, targetRombelKey);
-      closeModal('modal-excel-import-preview');
       
       appStorage.setActiveClassKey(targetRombelKey);
       syncHeaderInfo();
       renderStudentView();
-      showToast(`Berhasil mengimpor ${count} siswa dari Excel! 📊`);
+
+      // 2. Simpan LANGSUNG ke Database Supabase jika terhubung
+      let cloudSaved = false;
+      let cloudErrorMsg = '';
+
+      if (window.appSupabase) {
+        if (!window.appSupabase.isConnected) {
+          await window.appSupabase.testConnection();
+        }
+
+        if (window.appSupabase.isConnected) {
+          try {
+            showToast(`Menyimpan ${count} siswa ke Database Supabase... ⏳`);
+            const allStudentsInRombel = appStorage.getStudents(targetRombelKey);
+            await window.appSupabase.syncStudentsToCloud(targetRombelKey, allStudentsInRombel, appStorage);
+            cloudSaved = true;
+          } catch (err) {
+            console.error('Supabase import error:', err);
+            cloudErrorMsg = err.message || 'Error koneksi database';
+          }
+        }
+      }
+
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Proses Impor';
+      closeModal('modal-excel-import-preview');
+
+      if (cloudSaved) {
+        showToast(`✅ Berhasil! ${count} siswa masuk ke database Supabase & Lokal! 🎉`, 4000);
+      } else if (cloudErrorMsg) {
+        showToast(`⚠️ Siswa tersimpan di lokal, namun gagal masuk database: ${cloudErrorMsg}`, 5000);
+      } else {
+        showToast(`Berhasil mengimpor ${count} siswa (Tersimpan Lokal) 📊`, 4000);
+      }
     }
   });
 
@@ -830,8 +944,19 @@ document.addEventListener('DOMContentLoaded', () => {
         appStorage.setGrade(classKey, sem, studentId, activeLmIdx, tpIdx, num);
       });
 
-      input.addEventListener('change', () => {
+      input.addEventListener('change', async () => {
         showToast('Nilai tersimpan');
+        if (window.appSupabase && window.appSupabase.isConnected) {
+          const studentId = input.getAttribute('data-student-id');
+          const tpIdx = parseInt(input.getAttribute('data-tp-idx'), 10);
+          const valStr = input.value.trim();
+          const score = valStr === '' ? null : parseInt(valStr, 10);
+          try {
+            await window.appSupabase.syncSingleGradeToCloud(classKey, sem, studentId, activeLmIdx, tpIdx, score);
+          } catch (e) {
+            console.warn('Gagal sync nilai ke cloud:', e);
+          }
+        }
       });
     });
   }

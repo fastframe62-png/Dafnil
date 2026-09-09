@@ -66,9 +66,14 @@ CREATE TABLE IF NOT EXISTS app_grades (
 CREATE INDEX IF NOT EXISTS idx_grades_lookup ON app_grades(class_id, semester, student_id);
 
 -- ==============================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- Memungkinkan akses anon key untuk select, insert, update, dan delete
+-- ROW LEVEL SECURITY (RLS) POLICIES & GRANTS
+-- Memastikan token anon key memiliki izin penuh untuk SELECT, INSERT, UPDATE, DELETE
 -- ==============================================================================
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 
 ALTER TABLE app_identity ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_classes ENABLE ROW LEVEL SECURITY;
@@ -77,19 +82,29 @@ ALTER TABLE app_curriculum ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_grades ENABLE ROW LEVEL SECURITY;
 
 -- Policy untuk app_identity
-CREATE POLICY "Allow public all on app_identity" ON app_identity FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public all on app_identity" ON app_identity;
+DROP POLICY IF EXISTS "Allow all on app_identity" ON app_identity;
+CREATE POLICY "Allow all on app_identity" ON app_identity FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- Policy untuk app_classes
-CREATE POLICY "Allow public all on app_classes" ON app_classes FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public all on app_classes" ON app_classes;
+DROP POLICY IF EXISTS "Allow all on app_classes" ON app_classes;
+CREATE POLICY "Allow all on app_classes" ON app_classes FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- Policy untuk app_students
-CREATE POLICY "Allow public all on app_students" ON app_students FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public all on app_students" ON app_students;
+DROP POLICY IF EXISTS "Allow all on app_students" ON app_students;
+CREATE POLICY "Allow all on app_students" ON app_students FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- Policy untuk app_curriculum
-CREATE POLICY "Allow public all on app_curriculum" ON app_curriculum FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public all on app_curriculum" ON app_curriculum;
+DROP POLICY IF EXISTS "Allow all on app_curriculum" ON app_curriculum;
+CREATE POLICY "Allow all on app_curriculum" ON app_curriculum FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- Policy untuk app_grades
-CREATE POLICY "Allow public all on app_grades" ON app_grades FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public all on app_grades" ON app_grades;
+DROP POLICY IF EXISTS "Allow all on app_grades" ON app_grades;
+CREATE POLICY "Allow all on app_grades" ON app_grades FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- DATA AWAL (SEED DEFAULT)
