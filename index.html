@@ -45,6 +45,7 @@
             </div>
           </div>
           <div class="header-actions">
+            <button class="hdr-icon-btn" id="hdr-btn-theme-toggle" title="Ganti Mode Gelap / Terang">☀️</button>
             <button class="hdr-icon-btn" id="hdr-btn-undo" title="Undo / Batalkan (Ctrl+Z)" disabled>↩️</button>
             <button class="hdr-icon-btn" id="hdr-btn-redo" title="Redo / Ulangi (Ctrl+Y)" disabled>↪️</button>
             <button class="class-badge-btn" id="btn-edit-rombel" title="Pilih & Edit Rombel / Kelas">
@@ -64,22 +65,24 @@
             <!-- ================= VIEW 1: BERANDA / DASHBOARD ================= -->
             <section id="view-dashboard" class="spa-view active">
               
-              <!-- Hero Card -->
-              <div class="glass-card hero-card">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                  <div>
-                    <div class="hero-welcome">Selamat Datang, Guru 👋</div>
+              <!-- Hero Card (Dinamis Banner, Greeting, Quote) -->
+              <div class="glass-card hero-card hero-theme-indigo" id="dash-hero-card">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+                  <div style="flex: 1; min-width: 0;">
+                    <div class="hero-welcome" id="dash-greeting-title">Selamat Datang, Guru 👋</div>
                     <div class="hero-sub" id="dash-school-sub">SD NEGERI 01 UPT</div>
+                    <div class="hero-quote-text" id="dash-quote-text">Mendidik dengan hati, menginspirasi dengan keteladanan ✨</div>
                   </div>
-                  <div class="app-logo-badge" id="dash-hero-logo" style="width: 44px; height: 44px; font-size: 1.4rem;">🏫</div>
+                  <div class="app-logo-badge" id="dash-hero-logo" style="width: 46px; height: 46px; font-size: 1.45rem; flex-shrink: 0;">🏫</div>
                 </div>
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.65rem; flex-wrap: wrap; gap: 0.35rem;">
                   <button class="chip-item active" id="dash-class-tag">📚 Kelas 5 Umar ✏️</button>
                   <span class="chip-item" id="dash-sem-tag" style="background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan);">📘 Semester 1</span>
                 </div>
 
-                <div class="progress-container">
+                <!-- Widget: Progress Input Nilai -->
+                <div class="progress-container" id="dash-progress-wrapper">
                   <div class="progress-label-row">
                     <span>Progress Input Nilai</span>
                     <span id="dash-progress-pct">0%</span>
@@ -90,8 +93,8 @@
                 </div>
               </div>
 
-              <!-- Metrics Summary Cards -->
-              <div class="metrics-grid">
+              <!-- Widget: Metrics Summary Cards -->
+              <div class="metrics-grid" id="dash-metrics-wrapper">
                 <div class="metric-card">
                   <div class="metric-icon-box icon-purple">👨‍🎓</div>
                   <div>
@@ -122,17 +125,42 @@
                 </div>
               </div>
 
-              <!-- Big Export Excel Button -->
-              <button class="btn btn-emerald btn-lg btn-block" id="dash-btn-export" style="margin-top: 0.5rem;">
-                <span>📊</span> EXPORT EXCEL
-              </button>
+              <!-- Widget: Big Export Excel Button -->
+              <div id="dash-export-wrapper">
+                <button class="btn btn-emerald btn-lg btn-block" id="dash-btn-export" style="margin-top: 0.5rem;">
+                  <span>📊</span> EXPORT EXCEL
+                </button>
+              </div>
 
-              <!-- Quick Action Card -->
-              <div class="glass-card">
+              <!-- Widget: Quick Action Card -->
+              <div class="glass-card" id="dash-quick-actions-wrapper">
                 <div class="glass-card-title">⚡ Akses Cepat</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
                   <button class="btn btn-secondary" onclick="appNav('penilaian')">📝 Input Nilai</button>
                   <button class="btn btn-secondary" onclick="appNav('rekap')">📊 Rekap Nilai</button>
+                </div>
+              </div>
+
+              <!-- Widget: Optional Academic Info Card -->
+              <div class="glass-card" id="dash-info-card-wrapper" style="display: none;">
+                <div class="glass-card-title">🏫 Informasi Akademik</div>
+                <div class="dash-info-grid">
+                  <div class="dash-info-item">
+                    <span class="dash-info-label">Guru Pengampu</span>
+                    <span class="dash-info-val" id="dash-info-guru">-</span>
+                  </div>
+                  <div class="dash-info-item">
+                    <span class="dash-info-label">Kepala Sekolah</span>
+                    <span class="dash-info-val" id="dash-info-ks">-</span>
+                  </div>
+                  <div class="dash-info-item">
+                    <span class="dash-info-label">Mata Pelajaran</span>
+                    <span class="dash-info-val" id="dash-info-mapel">-</span>
+                  </div>
+                  <div class="dash-info-item">
+                    <span class="dash-info-label">Tahun Ajaran</span>
+                    <span class="dash-info-val" id="dash-info-tp">-</span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -262,6 +290,125 @@
             <!-- ================= VIEW 5: PENGATURAN / IDENTITAS ================= -->
             <section id="view-pengaturan" class="spa-view">
               
+              <!-- 0A. Mode Tema Tampilan (Gelap / Terang) -->
+              <div class="glass-card">
+                <div class="glass-card-title">
+                  <span>🌓 Mode Tema Aplikasi</span>
+                  <span id="settings-theme-label" style="font-size: 0.72rem; color: var(--accent-cyan);">Mode Gelap Aktif</span>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                  Pilih tampilan warna aplikasi sesuai kenyamanan Anda (Gelap untuk malam/kontras tinggi, Terang untuk siang hari):
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                  <button type="button" class="btn btn-secondary btn-theme-select active" id="btn-theme-dark" data-theme="dark">
+                    <span>🌙</span> Mode Gelap
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-theme-select" id="btn-theme-light" data-theme="light">
+                    <span>☀️</span> Mode Terang
+                  </button>
+                </div>
+              </div>
+
+              <!-- 0B. Kustomisasi Tampilan Beranda -->
+              <div class="glass-card">
+                <div class="glass-card-title">
+                  <span>🏠 Kustomisasi Tampilan Beranda</span>
+                  <button type="button" class="btn btn-secondary" id="btn-reset-home-config" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;" title="Reset Beranda ke Default">🔄 Reset</button>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+                  Sesuaikan teks sambutan, tema banner hero, dan widget yang tampil di halaman Beranda:
+                </p>
+
+                <div class="form-group">
+                  <label class="form-label">Teks Sambutan Beranda</label>
+                  <input type="text" class="form-input" id="input-home-greeting" placeholder="Contoh: Selamat Datang, Guru Hebat 👋">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Pesan Motivasi / Slogan Beranda</label>
+                  <input type="text" class="form-input" id="input-home-quote" placeholder="Contoh: Mendidik dengan hati, menginspirasi dengan keteladanan ✨">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Tema Warna Banner Hero</label>
+                  <div class="banner-theme-grid">
+                    <button type="button" class="banner-theme-btn active" data-theme="indigo">
+                      <span class="theme-color-preview preview-indigo"></span>
+                      <span>Indigo Cosmic</span>
+                    </button>
+                    <button type="button" class="banner-theme-btn" data-theme="emerald">
+                      <span class="theme-color-preview preview-emerald"></span>
+                      <span>Emerald Fresh</span>
+                    </button>
+                    <button type="button" class="banner-theme-btn" data-theme="sunset">
+                      <span class="theme-color-preview preview-sunset"></span>
+                      <span>Sunset Amber</span>
+                    </button>
+                    <button type="button" class="banner-theme-btn" data-theme="ocean">
+                      <span class="theme-color-preview preview-ocean"></span>
+                      <span>Cyber Ocean</span>
+                    </button>
+                    <button type="button" class="banner-theme-btn" data-theme="violet">
+                      <span class="theme-color-preview preview-violet"></span>
+                      <span>Royal Violet</span>
+                    </button>
+                    <button type="button" class="banner-theme-btn" data-theme="custom" id="btn-theme-custom-banner">
+                      <span class="theme-color-preview preview-custom">🖼️</span>
+                      <span>Gambar Sendiri</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Custom Banner Upload Box -->
+                <div id="custom-banner-upload-box" style="margin-bottom: 0.8rem; display: none;">
+                  <div style="display: flex; gap: 0.4rem; align-items: center;">
+                    <button type="button" class="btn btn-secondary btn-block" id="btn-trigger-upload-banner">
+                      <span>📁</span> Unggah Foto Banner (JPG/PNG)
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btn-remove-custom-banner" title="Hapus Banner Gambar">🗑️</button>
+                  </div>
+                  <div id="custom-banner-preview-box" class="banner-preview-thumbnail" style="display: none; margin-top: 0.4rem;">
+                    <img id="custom-banner-preview-img" src="" alt="Banner Preview">
+                  </div>
+                  <input type="file" id="custom-banner-file-input" accept="image/*" style="display: none;">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" style="margin-bottom: 0.4rem;">Widget yang Ditampilkan di Beranda</label>
+                  <div class="home-widgets-toggle-list">
+                    <label class="widget-toggle-item">
+                      <input type="checkbox" id="chk-widget-progress" checked>
+                      <span class="widget-toggle-custom"></span>
+                      <span class="widget-toggle-label">📊 Bar Progress Penginputan Nilai</span>
+                    </label>
+                    <label class="widget-toggle-item">
+                      <input type="checkbox" id="chk-widget-metrics" checked>
+                      <span class="widget-toggle-custom"></span>
+                      <span class="widget-toggle-label">📈 Kartu Statistik (Siswa, LM, TP, Rata-rata)</span>
+                    </label>
+                    <label class="widget-toggle-item">
+                      <input type="checkbox" id="chk-widget-export" checked>
+                      <span class="widget-toggle-custom"></span>
+                      <span class="widget-toggle-label">📑 Tombol Cepat Export Excel</span>
+                    </label>
+                    <label class="widget-toggle-item">
+                      <input type="checkbox" id="chk-widget-quickactions" checked>
+                      <span class="widget-toggle-custom"></span>
+                      <span class="widget-toggle-label">⚡ Menu Akses Cepat (Input Nilai & Rekap)</span>
+                    </label>
+                    <label class="widget-toggle-item">
+                      <input type="checkbox" id="chk-widget-infocard">
+                      <span class="widget-toggle-custom"></span>
+                      <span class="widget-toggle-label">🏫 Kartu Informasi Guru & Sekolah</span>
+                    </label>
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-block" id="btn-save-home-config" style="margin-top: 0.5rem;">
+                  <span>💾</span> Simpan Tampilan Beranda
+                </button>
+              </div>
+
               <!-- 1. Custom Icon & Logo Editor Card -->
               <div class="glass-card">
                 <div class="glass-card-title">🖼️ Logo & Icon Aplikasi</div>

@@ -25,6 +25,23 @@ const DEFAULT_STATE = {
     customIcon: '🏫', // Can be an emoji or Base64 Data URL
   },
 
+  // Theme Mode ('dark' or 'light')
+  themeMode: 'dark',
+
+  // Home Screen Customization Configuration
+  homeConfig: {
+    greetingTitle: 'Selamat Datang, Guru 👋',
+    greetingSub: '', // if empty, falls back to identity.namaSekolah
+    quoteText: 'Mendidik dengan hati, menginspirasi dengan keteladanan ✨',
+    bannerTheme: 'indigo', // 'indigo', 'emerald', 'sunset', 'ocean', 'violet', 'custom'
+    customBannerUrl: '',
+    showProgress: true,
+    showMetrics: true,
+    showExportBtn: true,
+    showQuickActions: true,
+    showInfoCard: false
+  },
+
   // Bottom Navigation Icons (Customizable per view)
   navIcons: {
     dashboard: '🏠',
@@ -341,6 +358,48 @@ class StorageManager {
   resetNavIcons() {
     this.data.navIcons = { ...DEFAULT_STATE.navIcons };
     this.saveData();
+  }
+
+  // Theme Mode methods
+  getThemeMode() {
+    return this.data.themeMode || 'dark';
+  }
+
+  setThemeMode(mode) {
+    this.data.themeMode = mode === 'light' ? 'light' : 'dark';
+    this.saveData();
+    return this.data.themeMode;
+  }
+
+  toggleThemeMode() {
+    const current = this.getThemeMode();
+    const next = current === 'dark' ? 'light' : 'dark';
+    return this.setThemeMode(next);
+  }
+
+  // Home Screen Customization methods
+  getHomeConfig() {
+    return {
+      ...DEFAULT_STATE.homeConfig,
+      ...(this.data.homeConfig || {})
+    };
+  }
+
+  updateHomeConfig(newConfig) {
+    this.recordHistory();
+    this.data.homeConfig = {
+      ...this.getHomeConfig(),
+      ...newConfig
+    };
+    this.saveData();
+    return this.data.homeConfig;
+  }
+
+  resetHomeConfig() {
+    this.recordHistory();
+    this.data.homeConfig = { ...DEFAULT_STATE.homeConfig };
+    this.saveData();
+    return this.data.homeConfig;
   }
 
   // Multi-Rombel Class methods

@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS app_identity (
     tahun_pelajaran TEXT DEFAULT '2026/2027',
     custom_icon TEXT DEFAULT '🏫',
     nav_icons JSONB DEFAULT '{"dashboard":"🏠","siswa":"👨‍🎓","penilaian":"📝","rekap":"📊","pengaturan":"⚙️"}'::jsonb,
+    home_config JSONB DEFAULT '{"greetingTitle":"Selamat Datang, Guru 👋","greetingSub":"","quoteText":"Mendidik dengan hati, menginspirasi dengan keteladanan ✨","bannerTheme":"indigo","customBannerUrl":"","showProgress":true,"showMetrics":true,"showExportBtn":true,"showQuickActions":true,"showInfoCard":false}'::jsonb,
+    theme_mode TEXT DEFAULT 'dark',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -70,6 +72,21 @@ BEGIN
     ALTER TABLE app_grades ADD CONSTRAINT app_grades_tp_index_check CHECK (tp_index BETWEEN 0 AND 4);
 EXCEPTION
     WHEN undefined_table THEN NULL;
+END $$;
+
+-- Pembaruan kolom home_config dan theme_mode di app_identity jika sudah ada tabel sebelumnya:
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'app_identity') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'app_identity' AND column_name = 'home_config') THEN
+            ALTER TABLE app_identity ADD COLUMN home_config JSONB DEFAULT '{"greetingTitle":"Selamat Datang, Guru 👋","greetingSub":"","quoteText":"Mendidik dengan hati, menginspirasi dengan keteladanan ✨","bannerTheme":"indigo","customBannerUrl":"","showProgress":true,"showMetrics":true,"showExportBtn":true,"showQuickActions":true,"showInfoCard":false}'::jsonb;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'app_identity' AND column_name = 'theme_mode') THEN
+            ALTER TABLE app_identity ADD COLUMN theme_mode TEXT DEFAULT 'dark';
+        END IF;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_grades_lookup ON app_grades(class_id, semester, student_id);

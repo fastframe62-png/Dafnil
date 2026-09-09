@@ -362,6 +362,8 @@ class SupabaseManager {
       tahun_pelajaran: identity.tahunPelajaran || '',
       custom_icon: identity.customIcon || '🏫',
       nav_icons: navIcons || {},
+      home_config: storage.getHomeConfig ? storage.getHomeConfig() : {},
+      theme_mode: storage.getThemeMode ? storage.getThemeMode() : 'dark',
       updated_at: new Date().toISOString()
     });
 
@@ -475,6 +477,8 @@ class SupabaseManager {
       tahun_pelajaran: identity.tahunPelajaran,
       custom_icon: identity.customIcon,
       nav_icons: state.navIcons || {},
+      home_config: storage.getHomeConfig ? storage.getHomeConfig() : (state.homeConfig || {}),
+      theme_mode: storage.getThemeMode ? storage.getThemeMode() : (state.themeMode || 'dark'),
       updated_at: new Date().toISOString()
     });
     if (idErr) throw new Error('Gagal simpan Identitas: ' + idErr.message);
@@ -581,6 +585,12 @@ class SupabaseManager {
         for (const k in idData.nav_icons) {
           storage.setNavIcon(k, idData.nav_icons[k]);
         }
+      }
+      if (idData.home_config && storage.updateHomeConfig) {
+        storage.updateHomeConfig(idData.home_config);
+      }
+      if (idData.theme_mode && storage.setThemeMode) {
+        storage.setThemeMode(idData.theme_mode);
       }
     }
 

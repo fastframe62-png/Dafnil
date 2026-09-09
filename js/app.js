@@ -86,6 +86,68 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ==========================================================================
+  // THEME ENGINE (DARK & LIGHT MODE)
+  // ==========================================================================
+  function applyTheme(theme) {
+    const rootTheme = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', rootTheme);
+    document.body.setAttribute('data-theme', rootTheme);
+
+    // Update Header Toggle Button
+    const hdrThemeBtn = document.getElementById('hdr-btn-theme-toggle');
+    if (hdrThemeBtn) {
+      if (rootTheme === 'light') {
+        hdrThemeBtn.textContent = '🌙';
+        hdrThemeBtn.title = 'Beralih ke Mode Gelap (Dark Mode)';
+      } else {
+        hdrThemeBtn.textContent = '☀️';
+        hdrThemeBtn.title = 'Beralih ke Mode Terang (Light Mode)';
+      }
+    }
+
+    // Update Settings UI
+    const btnDark = document.getElementById('btn-theme-dark');
+    const btnLight = document.getElementById('btn-theme-light');
+    const themeLabel = document.getElementById('settings-theme-label');
+
+    if (btnDark && btnLight) {
+      if (rootTheme === 'light') {
+        btnLight.classList.add('active');
+        btnDark.classList.remove('active');
+      } else {
+        btnDark.classList.add('active');
+        btnLight.classList.remove('active');
+      }
+    }
+
+    if (themeLabel) {
+      themeLabel.textContent = rootTheme === 'light' ? 'Mode Terang Aktif ☀️' : 'Mode Gelap Aktif 🌙';
+      themeLabel.style.color = rootTheme === 'light' ? 'var(--primary)' : 'var(--accent-cyan)';
+    }
+  }
+
+  // Initial Theme Load
+  applyTheme(appStorage.getThemeMode());
+
+  // Header Theme Button Click Handler
+  const hdrThemeBtn = document.getElementById('hdr-btn-theme-toggle');
+  if (hdrThemeBtn) {
+    hdrThemeBtn.addEventListener('click', async () => {
+      const newTheme = appStorage.toggleThemeMode();
+      applyTheme(newTheme);
+      showToast(newTheme === 'light' ? 'Mode Terang diaktifkan ☀️' : 'Mode Gelap diaktifkan 🌙');
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+        } catch (e) {
+          console.warn('Gagal sync tema ke Supabase:', e);
+        }
+      }
+    });
+  }
+
   // Custom Logo / Icon Renderer
   function renderAppLogo() {
     const identity = appStorage.getIdentity();
@@ -523,18 +585,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const classInfo = appStorage.getClassInfo(classKey);
     const sem = appStorage.getActiveSemester();
     const students = appStorage.getStudents(classKey);
+    const homeConfig = appStorage.getHomeConfig ? appStorage.getHomeConfig() : {};
 
-    document.getElementById('dash-school-sub').textContent = identity.namaSekolah || 'SD ..........';
+    // 1. Greeting & Quotes
+    const greetingEl = document.getElementById('dash-greeting-title');
+    if (greetingEl) {
+      greetingEl.textContent = homeConfig.greetingTitle || 'Selamat Datang, Guru 👋';
+    }
+
+    const schoolSubEl = document.getElementById('dash-school-sub');
+    if (schoolSubEl) {
+      schoolSubEl.textContent = homeConfig.greetingSub || identity.namaSekolah || 'SD ..........';
+    }
+
+    const quoteEl = document.getElementById('dash-quote-text');
+    if (quoteEl) {
+      if (homeConfig.quoteText && homeConfig.quoteText.trim()) {
+        quoteEl.textContent = homeConfig.quoteText;
+        quoteEl.style.display = 'block';
+      } else {
+        quoteEl.style.display = 'none';
+      }
+    }
+
+    // 2. Hero Card Banner Theme
+    const dashHeroCard = document.getElementById('dash-hero-card');
+    if (dashHeroCard) {
+      dashHeroCard.classList.remove(
+        'hero-theme-indigo',
+        'hero-theme-emerald',
+        'hero-theme-sunset',
+        'hero-theme-ocean',
+        'hero-theme-violet',
+        'hero-theme-custom'
+      );
+
+      if (homeConfig.bannerTheme === 'custom' && homeConfig.customBannerUrl) {
+        dashHeroCard.classList.add('hero-theme-custom');
+        dashHeroCard.style.backgroundImage = `url("${homeConfig.customBannerUrl}")`;
+      } else {
+        dashHeroCard.style.backgroundImage = '';
+        dashHeroCard.classList.add(`hero-theme-${homeConfig.bannerTheme || 'indigo'}`);
+      }
+    }
+
+    // 3. Class & Semester Tags
     document.getElementById('dash-class-tag').textContent = `📚 ${classInfo.name} ✏️`;
     document.getElementById('dash-sem-tag').textContent = sem === 1 ? '📘 Semester 1' : '📗 Semester 2';
-    
-    document.getElementById('dash-count-siswa').textContent = students.length;
-    document.getElementById('dash-count-lm').textContent = '4 LM';
-    document.getElementById('dash-count-tp').textContent = '16 TP';
 
+    // 4. Progress Input Nilai Widget
+    const progressWrapper = document.getElementById('dash-progress-wrapper');
+    if (progressWrapper) {
+      progressWrapper.style.display = homeConfig.showProgress !== false ? 'block' : 'none';
+    }
     const progress = appStorage.calculateClassProgress(classKey, sem);
     document.getElementById('dash-progress-pct').textContent = `${progress}%`;
     document.getElementById('dash-progress-fill').style.width = `${progress}%`;
+
+    // 5. Metrics Summary Cards Widget
+    const metricsWrapper = document.getElementById('dash-metrics-wrapper');
+    if (metricsWrapper) {
+      metricsWrapper.style.display = homeConfig.showMetrics !== false ? 'grid' : 'none';
+    }
+    document.getElementById('dash-count-siswa').textContent = students.length;
+    document.getElementById('dash-count-lm').textContent = '4 LM';
+    document.getElementById('dash-count-tp').textContent = '16 TP';
 
     let totalAvgSum = 0;
     let studentAvgCount = 0;
@@ -548,6 +663,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const classAvg = studentAvgCount > 0 ? (totalAvgSum / studentAvgCount).toFixed(1) : 0;
     document.getElementById('dash-avg-class').textContent = classAvg;
+
+    // 6. Export Excel Button Widget
+    const exportWrapper = document.getElementById('dash-export-wrapper');
+    if (exportWrapper) {
+      exportWrapper.style.display = homeConfig.showExportBtn !== false ? 'block' : 'none';
+    }
+
+    // 7. Quick Actions Widget
+    const quickActionsWrapper = document.getElementById('dash-quick-actions-wrapper');
+    if (quickActionsWrapper) {
+      quickActionsWrapper.style.display = homeConfig.showQuickActions !== false ? 'block' : 'none';
+    }
+
+    // 8. Academic Info Card Widget
+    const infoCardWrapper = document.getElementById('dash-info-card-wrapper');
+    if (infoCardWrapper) {
+      if (homeConfig.showInfoCard) {
+        infoCardWrapper.style.display = 'block';
+        document.getElementById('dash-info-guru').textContent = identity.namaGuru || '-';
+        document.getElementById('dash-info-ks').textContent = identity.namaKepalaSekolah || '-';
+        document.getElementById('dash-info-mapel').textContent = identity.mataPelajaran || '-';
+        document.getElementById('dash-info-tp').textContent = identity.tahunPelajaran || '-';
+      } else {
+        infoCardWrapper.style.display = 'none';
+      }
+    }
   }
 
   document.getElementById('dash-btn-export').addEventListener('click', () => {
@@ -1416,6 +1557,54 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAppLogo();
     renderNavIcons();
 
+    // Inisialisasi Mode Tema
+    applyTheme(appStorage.getThemeMode());
+
+    // Inisialisasi Kustomisasi Beranda
+    const homeConfig = appStorage.getHomeConfig ? appStorage.getHomeConfig() : {};
+    const inputGreeting = document.getElementById('input-home-greeting');
+    if (inputGreeting) inputGreeting.value = homeConfig.greetingTitle || '';
+
+    const inputQuote = document.getElementById('input-home-quote');
+    if (inputQuote) inputQuote.value = homeConfig.quoteText || '';
+
+    const activeBannerTheme = homeConfig.bannerTheme || 'indigo';
+    document.querySelectorAll('.banner-theme-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-theme') === activeBannerTheme);
+    });
+
+    const bannerUploadBox = document.getElementById('custom-banner-upload-box');
+    if (bannerUploadBox) {
+      bannerUploadBox.style.display = activeBannerTheme === 'custom' ? 'block' : 'none';
+    }
+
+    const bannerPreviewBox = document.getElementById('custom-banner-preview-box');
+    const bannerPreviewImg = document.getElementById('custom-banner-preview-img');
+    if (bannerPreviewBox && bannerPreviewImg) {
+      if (homeConfig.customBannerUrl) {
+        bannerPreviewImg.src = homeConfig.customBannerUrl;
+        bannerPreviewBox.style.display = 'block';
+      } else {
+        bannerPreviewBox.style.display = 'none';
+      }
+    }
+
+    // Checkbox Widget Beranda
+    const chkProgress = document.getElementById('chk-widget-progress');
+    if (chkProgress) chkProgress.checked = homeConfig.showProgress !== false;
+
+    const chkMetrics = document.getElementById('chk-widget-metrics');
+    if (chkMetrics) chkMetrics.checked = homeConfig.showMetrics !== false;
+
+    const chkExport = document.getElementById('chk-widget-export');
+    if (chkExport) chkExport.checked = homeConfig.showExportBtn !== false;
+
+    const chkQuickActions = document.getElementById('chk-widget-quickactions');
+    if (chkQuickActions) chkQuickActions.checked = homeConfig.showQuickActions !== false;
+
+    const chkInfoCard = document.getElementById('chk-widget-infocard');
+    if (chkInfoCard) chkInfoCard.checked = !!homeConfig.showInfoCard;
+
     if (window.appSupabase) {
       document.getElementById('input-supabase-url').value = window.appSupabase.config.url || '';
       document.getElementById('input-supabase-key').value = window.appSupabase.config.key || '';
@@ -1455,6 +1644,167 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  // ==========================================================================
+  // PENGATURAN: THEME MODE & HOME CUSTOMIZATION LISTENERS
+  // ==========================================================================
+
+  // 1. Settings Theme Mode Buttons Listeners
+  const btnThemeDark = document.getElementById('btn-theme-dark');
+  const btnThemeLight = document.getElementById('btn-theme-light');
+  if (btnThemeDark && btnThemeLight) {
+    btnThemeDark.addEventListener('click', async () => {
+      appStorage.setThemeMode('dark');
+      applyTheme('dark');
+      showToast('Mode Gelap diaktifkan 🌙');
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try { await window.appSupabase.syncIdentityToCloud(appStorage); } catch(e) {}
+      }
+    });
+
+    btnThemeLight.addEventListener('click', async () => {
+      appStorage.setThemeMode('light');
+      applyTheme('light');
+      showToast('Mode Terang diaktifkan ☀️');
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try { await window.appSupabase.syncIdentityToCloud(appStorage); } catch(e) {}
+      }
+    });
+  }
+
+  // 2. Banner Theme Preset Buttons
+  let tempCustomBannerUrl = null;
+
+  document.querySelectorAll('.banner-theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const theme = btn.getAttribute('data-theme');
+      document.querySelectorAll('.banner-theme-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const uploadBox = document.getElementById('custom-banner-upload-box');
+      if (uploadBox) {
+        uploadBox.style.display = theme === 'custom' ? 'block' : 'none';
+      }
+    });
+  });
+
+  // 3. Custom Banner Upload & Remove
+  const btnUploadBanner = document.getElementById('btn-trigger-upload-banner');
+  const bannerFileInput = document.getElementById('custom-banner-file-input');
+  const btnRemoveBanner = document.getElementById('btn-remove-custom-banner');
+
+  if (btnUploadBanner && bannerFileInput) {
+    btnUploadBanner.addEventListener('click', () => {
+      bannerFileInput.value = '';
+      bannerFileInput.click();
+    });
+
+    bannerFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file banner terlalu besar. Maksimal 5MB.');
+        return;
+      }
+
+      showToast('Mengompres banner gambar... ⏳');
+      compressImageFile(file, 900, 350, (dataUrl) => {
+        tempCustomBannerUrl = dataUrl;
+        const bannerPreviewBox = document.getElementById('custom-banner-preview-box');
+        const bannerPreviewImg = document.getElementById('custom-banner-preview-img');
+        if (bannerPreviewBox && bannerPreviewImg) {
+          bannerPreviewImg.src = dataUrl;
+          bannerPreviewBox.style.display = 'block';
+        }
+        showToast('Gambar banner siap disimpan! 🖼️');
+      });
+    });
+  }
+
+  if (btnRemoveBanner) {
+    btnRemoveBanner.addEventListener('click', () => {
+      tempCustomBannerUrl = '';
+      const bannerPreviewBox = document.getElementById('custom-banner-preview-box');
+      const bannerPreviewImg = document.getElementById('custom-banner-preview-img');
+      if (bannerPreviewBox && bannerPreviewImg) {
+        bannerPreviewImg.src = '';
+        bannerPreviewBox.style.display = 'none';
+      }
+      showToast('Gambar banner dihapus.');
+    });
+  }
+
+  // 4. Save Home Config Button
+  const btnSaveHomeConfig = document.getElementById('btn-save-home-config');
+  if (btnSaveHomeConfig) {
+    btnSaveHomeConfig.addEventListener('click', async () => {
+      const currentConfig = appStorage.getHomeConfig();
+      const activeBtn = document.querySelector('.banner-theme-btn.active');
+      const bannerTheme = activeBtn ? activeBtn.getAttribute('data-theme') : (currentConfig.bannerTheme || 'indigo');
+
+      const customBanner = tempCustomBannerUrl !== null ? tempCustomBannerUrl : (currentConfig.customBannerUrl || '');
+
+      const newConfig = {
+        greetingTitle: (document.getElementById('input-home-greeting').value || '').trim() || 'Selamat Datang, Guru 👋',
+        quoteText: (document.getElementById('input-home-quote').value || '').trim(),
+        bannerTheme: bannerTheme,
+        customBannerUrl: customBanner,
+        showProgress: document.getElementById('chk-widget-progress').checked,
+        showMetrics: document.getElementById('chk-widget-metrics').checked,
+        showExportBtn: document.getElementById('chk-widget-export').checked,
+        showQuickActions: document.getElementById('chk-widget-quickactions').checked,
+        showInfoCard: document.getElementById('chk-widget-infocard').checked
+      };
+
+      appStorage.updateHomeConfig(newConfig);
+      updateHistoryButtonsUI();
+      renderDashboardView();
+
+      btnSaveHomeConfig.disabled = true;
+      btnSaveHomeConfig.innerHTML = '<span>⏳</span> Menyimpan ke Cloud...';
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+          showToast('✅ Tampilan Beranda tersimpan & disinkronkan ke Supabase!');
+        } catch (e) {
+          console.warn('Gagal sync beranda ke Supabase:', e);
+          showToast('Tampilan tersimpan di lokal (Cloud belum terhubung)');
+        }
+      } else {
+        showToast('✅ Tampilan Beranda berhasil disimpan!');
+      }
+
+      btnSaveHomeConfig.disabled = false;
+      btnSaveHomeConfig.innerHTML = '<span>💾</span> Simpan Tampilan Beranda';
+    });
+  }
+
+  // 5. Reset Home Config Button
+  const btnResetHomeConfig = document.getElementById('btn-reset-home-config');
+  if (btnResetHomeConfig) {
+    btnResetHomeConfig.addEventListener('click', async () => {
+      if (!confirm('Kembalikan pengaturan tampilan Beranda ke bawaan?')) return;
+      appStorage.resetHomeConfig();
+      tempCustomBannerUrl = null;
+      updateHistoryButtonsUI();
+      renderPengaturanView();
+      renderDashboardView();
+
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncIdentityToCloud(appStorage);
+          showToast('Pengaturan Beranda di-reset & disinkronkan!');
+        } catch (e) {
+          console.warn('Gagal sync reset beranda ke Supabase:', e);
+          showToast('Pengaturan Beranda di-reset ke bawaan.');
+        }
+      } else {
+        showToast('Pengaturan Beranda di-reset ke bawaan.');
+      }
+    });
   }
 
   // Preset Icon Bar Listeners
