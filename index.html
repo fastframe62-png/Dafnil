@@ -44,7 +44,10 @@
               <div class="app-logo-badge" id="hdr-logo-box">🏫</div>
               <div class="header-text-block">
                 <span class="header-school-name" id="hdr-school-name">SD NEGERI 01 UPT</span>
-                <span class="header-mapel-info" id="hdr-mapel-info">Bahasa Indonesia</span>
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                  <span class="header-mapel-info" id="hdr-mapel-info">Bahasa Indonesia</span>
+                  <div class="atmosphere-badge" id="atmosphere-badge" title="Efek Suasana Layar HP (Berganti Otomatis Tiap 10s)">🌠 Meteor</div>
+                </div>
               </div>
             </div>
             <div class="header-actions">
@@ -288,7 +291,88 @@
                 <input type="file" id="custom-logo-file-input" accept="image/*" style="display: none;">
               </div>
 
-              <!-- 2. Identitas Sekolah & Guru Form Card -->
+              <!-- 2. Kustomisasi Icon Menu Navigasi Bawah -->
+              <div class="glass-card">
+                <div class="glass-card-title">
+                  <span>🧭 Kustomisasi Icon Menu Navigasi</span>
+                  <button class="btn btn-secondary" id="btn-reset-all-nav-icons" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;" title="Reset Semua Icon">🔄 Reset</button>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+                  Ubah icon menu bawah dengan mengunggah gambar logo / icon sendiri:
+                </p>
+
+                <div class="nav-icon-edit-grid">
+                  <!-- Beranda -->
+                  <div class="nav-icon-edit-card">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <div class="nav-icon-preview-box" id="nav-preview-dashboard">🏠</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.75rem;">Beranda</div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim);">Menu Utama</div>
+                      </div>
+                    </div>
+                    <button class="icon-btn btn-upload-nav-icon" data-nav="dashboard" title="Unggah Gambar Icon">📁</button>
+                  </div>
+
+                  <!-- Siswa -->
+                  <div class="nav-icon-edit-card">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <div class="nav-icon-preview-box" id="nav-preview-siswa">👨‍🎓</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.75rem;">Siswa</div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim);">Data Murid</div>
+                      </div>
+                    </div>
+                    <button class="icon-btn btn-upload-nav-icon" data-nav="siswa" title="Unggah Gambar Icon">📁</button>
+                  </div>
+
+                  <!-- Penilaian -->
+                  <div class="nav-icon-edit-card">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <div class="nav-icon-preview-box" id="nav-preview-penilaian">📝</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.75rem;">Penilaian</div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim);">Input Nilai</div>
+                      </div>
+                    </div>
+                    <button class="icon-btn btn-upload-nav-icon" data-nav="penilaian" title="Unggah Gambar Icon">📁</button>
+                  </div>
+
+                  <!-- Rekap -->
+                  <div class="nav-icon-edit-card">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <div class="nav-icon-preview-box" id="nav-preview-rekap">📊</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.75rem;">Rekap</div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim);">Laporan</div>
+                      </div>
+                    </div>
+                    <button class="icon-btn btn-upload-nav-icon" data-nav="rekap" title="Unggah Gambar Icon">📁</button>
+                  </div>
+                </div>
+
+                <!-- Hidden Input for Nav Icon Upload -->
+                <input type="file" id="nav-icon-file-input" accept="image/*" style="display: none;">
+              </div>
+
+              <!-- 3. Efek Suasana Animasi Layar HP (10 Detik) -->
+              <div class="glass-card">
+                <div class="glass-card-title">
+                  <span>🌌 Animasi Suasana Layar HP</span>
+                  <span style="font-size: 0.7rem; color: var(--accent-cyan);">Berganti Tiap 10s</span>
+                </div>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                  Pilih suasana latar belakang layar smartphone atau biarkan berganti otomatis:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
+                  <button class="btn btn-secondary btn-atmosphere-select" data-mode="meteor">🌠 Meteor Jatuh</button>
+                  <button class="btn btn-secondary btn-atmosphere-select" data-mode="rainstorm">⛈️ Hujan Badai</button>
+                  <button class="btn btn-secondary btn-atmosphere-select" data-mode="snow">❄️ Salju Dingin</button>
+                  <button class="btn btn-primary btn-atmosphere-select active" data-mode="auto">🔄 Otomatis (10s)</button>
+                </div>
+              </div>
+
+              <!-- 4. Identitas Sekolah & Guru Form Card -->
               <div class="glass-card">
                 <div class="glass-card-title">⚙️ Identitas Sekolah & Guru</div>
                 
@@ -370,23 +454,23 @@
           <!-- Floating Bottom Navigation Bar -->
           <nav class="bottom-nav">
             <button class="nav-item active" data-view="dashboard">
-              <span class="nav-icon">🏠</span>
+              <span class="nav-icon" id="nav-icon-dashboard">🏠</span>
               <span>Beranda</span>
             </button>
             <button class="nav-item" data-view="siswa">
-              <span class="nav-icon">👨‍🎓</span>
+              <span class="nav-icon" id="nav-icon-siswa">👨‍🎓</span>
               <span>Siswa</span>
             </button>
             <button class="nav-item" data-view="penilaian">
-              <span class="nav-icon">📝</span>
+              <span class="nav-icon" id="nav-icon-penilaian">📝</span>
               <span>Penilaian</span>
             </button>
             <button class="nav-item" data-view="rekap">
-              <span class="nav-icon">📊</span>
+              <span class="nav-icon" id="nav-icon-rekap">📊</span>
               <span>Rekap</span>
             </button>
             <button class="nav-item" data-view="pengaturan">
-              <span class="nav-icon">⚙️</span>
+              <span class="nav-icon" id="nav-icon-pengaturan">⚙️</span>
               <span>Pengaturan</span>
             </button>
           </nav>
