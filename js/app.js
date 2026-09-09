@@ -873,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentLm = curriculum[activeLmIdx];
     document.getElementById('active-lm-title-text').textContent = currentLm ? currentLm.name : `Lingkup Materi ${activeLmIdx + 1}`;
-    document.getElementById('active-tp-summary-text').textContent = currentLm ? currentLm.tps.join(' • ') : 'TP 1 - TP 4';
+    document.getElementById('active-tp-summary-text').textContent = currentLm ? (currentLm.tps.join(' • ') + ' • Sumatif LM') : 'TP 1 - TP 4 • Sumatif LM';
 
     const container = document.getElementById('scoring-cards-container');
     container.innerHTML = '';
@@ -892,6 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'score-card';
 
       let tpInputsHtml = '';
+      // TP 1 sampai TP 4
       for (let tpIdx = 0; tpIdx < 4; tpIdx++) {
         const score = appStorage.getGrade(classKey, sem, student.id, activeLmIdx, tpIdx);
         
@@ -916,6 +917,29 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
+      // Kolom Nilai Sumatif LM (tpIdx = 4) untuk Lingkup Materi 1 s/d 8
+      const sumatifScore = appStorage.getGrade(classKey, sem, student.id, activeLmIdx, 4);
+      let sumatifClass = '';
+      if (typeof sumatifScore === 'number') {
+        if (sumatifScore >= 75) sumatifClass = 'tp-score-pass';
+        else if (sumatifScore >= 60) sumatifClass = 'tp-score-warn';
+        else sumatifClass = 'tp-score-low';
+      }
+
+      tpInputsHtml += `
+        <div class="tp-input-box sumatif-box">
+          <span class="tp-label sumatif-label">Sumatif</span>
+          <input type="number" 
+                 min="0" max="100" 
+                 class="tp-input sumatif-input ${sumatifClass}" 
+                 data-student-id="${student.id}" 
+                 data-tp-idx="4" 
+                 data-is-sumatif="true"
+                 value="${sumatifScore !== '' ? sumatifScore : ''}" 
+                 placeholder="-">
+        </div>
+      `;
+
       card.innerHTML = `
         <div class="score-card-header">
           <div class="score-student-info">
@@ -935,11 +959,12 @@ document.addEventListener('DOMContentLoaded', () => {
       input.addEventListener('input', () => {
         const studentId = input.getAttribute('data-student-id');
         const tpIdx = parseInt(input.getAttribute('data-tp-idx'), 10);
+        const isSumatif = input.getAttribute('data-is-sumatif') === 'true';
         let valStr = input.value.trim();
 
         if (valStr === '') {
           appStorage.setGrade(classKey, sem, studentId, activeLmIdx, tpIdx, '');
-          input.className = 'tp-input';
+          input.className = isSumatif ? 'tp-input sumatif-input' : 'tp-input';
           return;
         }
 
@@ -950,15 +975,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         input.value = num;
 
-        if (num >= 75) input.className = 'tp-input tp-score-pass';
-        else if (num >= 60) input.className = 'tp-input tp-score-warn';
-        else input.className = 'tp-input tp-score-low';
+        let passClass = isSumatif ? 'tp-input sumatif-input ' : 'tp-input ';
+        if (num >= 75) input.className = passClass + 'tp-score-pass';
+        else if (num >= 60) input.className = passClass + 'tp-score-warn';
+        else input.className = passClass + 'tp-score-low';
 
         appStorage.setGrade(classKey, sem, studentId, activeLmIdx, tpIdx, num);
       });
 
       input.addEventListener('change', async () => {
-        showToast('Nilai tersimpan');
+        const isSumatif = input.getAttribute('data-is-sumatif') === 'true';
+        showToast(isSumatif ? 'Nilai sumatif tersimpan' : 'Nilai tersimpan');
         if (window.appSupabase && window.appSupabase.isConnected) {
           const studentId = input.getAttribute('data-student-id');
           const tpIdx = parseInt(input.getAttribute('data-tp-idx'), 10);
@@ -1066,8 +1093,8 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let i = lmStartIndex; i <= lmEndIndex; i++) {
       const lm = curriculum[i];
       const name = lm ? lm.name : `LM ${i + 1}`;
-      tr1 += `<th colspan="4">${escapeHtml(name)}</th>`;
-      tr2 += `<th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th>`;
+      tr1 += `<th colspan="5">${escapeHtml(name)}</th>`;
+      tr2 += `<th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th><th class="th-sumatif">Sumatif</th>`;
     }
 
     tr1 += `<th rowspan="2">Rata-rata</th></tr>`;
@@ -1080,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filtered.length === 0) {
       tableHtml += `
         <tr>
-          <td colspan="19" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          <td colspan="23" style="text-align: center; padding: 2rem; color: var(--text-muted);">
             Tidak ada data rekap nilai.
           </td>
         </tr>
@@ -1092,10 +1119,14 @@ document.addEventListener('DOMContentLoaded', () => {
         tableHtml += `<td class="name-col">${escapeHtml(student.name)}</td>`;
 
         for (let lmIndex = lmStartIndex; lmIndex <= lmEndIndex; lmIndex++) {
+          // TP 1 sampai TP 4
           for (let tpIndex = 0; tpIndex < 4; tpIndex++) {
             const score = appStorage.getGrade(classKey, activeRekapSem, student.id, lmIndex, tpIndex);
             tableHtml += `<td>${score !== '' ? score : '-'}</td>`;
           }
+          // Kolom Nilai Sumatif LM (tpIndex = 4)
+          const sumatifScore = appStorage.getGrade(classKey, activeRekapSem, student.id, lmIndex, 4);
+          tableHtml += `<td class="td-sumatif">${sumatifScore !== '' ? `<b>${sumatifScore}</b>` : '-'}</td>`;
         }
 
         const avg = appStorage.calculateStudentSemesterAverage(classKey, activeRekapSem, student.id);

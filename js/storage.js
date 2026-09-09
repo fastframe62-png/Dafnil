@@ -487,6 +487,15 @@ class StorageManager {
     this.saveData();
   }
 
+  // Nilai Sumatif LM (tpIndex = 4)
+  getSumatifGrade(classKey, semester, studentId, lmIndex) {
+    return this.getGrade(classKey, semester, studentId, lmIndex, 4);
+  }
+
+  setSumatifGrade(classKey, semester, studentId, lmIndex, score) {
+    this.setGrade(classKey, semester, studentId, lmIndex, 4, score);
+  }
+
   // Helper calculations
   calculateStudentSemesterAverage(classKey, semester, studentId) {
     const lmStartIndex = semester === 1 ? 0 : 4;
@@ -495,7 +504,8 @@ class StorageManager {
     let count = 0;
 
     for (let lmIndex = lmStartIndex; lmIndex <= lmEndIndex; lmIndex++) {
-      for (let tpIndex = 0; tpIndex < 4; tpIndex++) {
+      // Menghitung TP 1 s/d TP 4 (0..3) serta Nilai Sumatif LM (4)
+      for (let tpIndex = 0; tpIndex <= 4; tpIndex++) {
         const score = this.getGrade(classKey, semester, studentId, lmIndex, tpIndex);
         if (typeof score === 'number' && !isNaN(score)) {
           sum += score;
@@ -513,12 +523,13 @@ class StorageManager {
 
     const lmStartIndex = semester === 1 ? 0 : 4;
     const lmEndIndex = semester === 1 ? 3 : 7;
-    const totalSlots = students.length * 4 * 4;
+    // 4 LM per semester * (4 TP + 1 Nilai Sumatif = 5 kolom penilaian per LM)
+    const totalSlots = students.length * 4 * 5;
     let filledSlots = 0;
 
     students.forEach(student => {
       for (let lmIndex = lmStartIndex; lmIndex <= lmEndIndex; lmIndex++) {
-        for (let tpIndex = 0; tpIndex < 4; tpIndex++) {
+        for (let tpIndex = 0; tpIndex <= 4; tpIndex++) {
           const score = this.getGrade(classKey, semester, student.id, lmIndex, tpIndex);
           if (typeof score === 'number' && !isNaN(score)) {
             filledSlots++;

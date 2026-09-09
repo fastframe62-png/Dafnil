@@ -645,7 +645,7 @@ html, body {
 
 .tp-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.35rem;
 }
 
@@ -660,10 +660,21 @@ html, body {
   padding: 0.35rem 0.15rem;
 }
 
+.tp-input-box.sumatif-box {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+
 .tp-label {
   font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+.tp-label.sumatif-label {
+  color: #c084fc;
+  font-weight: 800;
+  letter-spacing: 0.2px;
 }
 
 .tp-input {
@@ -680,14 +691,38 @@ html, body {
   outline: none;
 }
 
+.tp-input.sumatif-input {
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(139, 92, 246, 0.1);
+  color: #f3e8ff;
+}
+
 .tp-input:focus {
   border-color: var(--primary-light);
   background: rgba(99, 102, 241, 0.2);
 }
 
+.tp-input.sumatif-input:focus {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.25);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
 .tp-score-pass { color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.4); }
 .tp-score-warn { color: var(--accent-amber); border-color: rgba(245, 158, 11, 0.4); }
 .tp-score-low { color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.4); }
+
+.th-sumatif {
+  background: rgba(139, 92, 246, 0.28) !important;
+  color: #e9d5ff !important;
+  font-weight: 800 !important;
+}
+
+.td-sumatif {
+  background: rgba(139, 92, 246, 0.09);
+  font-weight: 700;
+  color: #f3e8ff;
+}
 
 /* ==========================================================================
    5. Rekap Table View

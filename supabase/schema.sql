@@ -50,18 +50,27 @@ CREATE TABLE IF NOT EXISTS app_curriculum (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. TABEL NILAI SISWA
+-- 6. TABEL NILAI SISWA (Mendukung TP 1 s/d TP 4 dan Nilai Sumatif LM)
 CREATE TABLE IF NOT EXISTS app_grades (
     id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
     class_id TEXT NOT NULL REFERENCES app_classes(id) ON DELETE CASCADE,
     semester INTEGER NOT NULL CHECK (semester IN (1, 2)),
     student_id TEXT NOT NULL REFERENCES app_students(id) ON DELETE CASCADE,
     lm_index INTEGER NOT NULL CHECK (lm_index BETWEEN 0 AND 7),
-    tp_index INTEGER NOT NULL CHECK (tp_index BETWEEN 0 AND 3),
+    tp_index INTEGER NOT NULL CHECK (tp_index BETWEEN 0 AND 4), -- 0..3: TP 1-4, 4: Nilai Sumatif LM
     score NUMERIC(5,2) CHECK (score BETWEEN 0 AND 100),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_grade_slot UNIQUE (class_id, semester, student_id, lm_index, tp_index)
 );
+
+-- Pembaruan constraint otomatis jika tabel app_grades sudah pernah dibuat dengan constraint lama (0..3):
+DO $$
+BEGIN
+    ALTER TABLE app_grades DROP CONSTRAINT IF EXISTS app_grades_tp_index_check;
+    ALTER TABLE app_grades ADD CONSTRAINT app_grades_tp_index_check CHECK (tp_index BETWEEN 0 AND 4);
+EXCEPTION
+    WHEN undefined_table THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_grades_lookup ON app_grades(class_id, semester, student_id);
 

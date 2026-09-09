@@ -291,16 +291,18 @@ class SupabaseManager {
   }
 
   /**
-   * Sinkronkan 1 nilai (TP score) langsung ke database Supabase
+   * Sinkronkan 1 nilai (TP score atau Nilai Sumatif LM) langsung ke database Supabase
+   * tpIndex = 0..3 untuk TP 1..4, dan tpIndex = 4 untuk Nilai Sumatif LM
    */
   async syncSingleGradeToCloud(classKey, semester, studentId, lmIndex, tpIndex, score) {
     if (!this.client || !this.isConnected) return;
     try {
       if (score === null || score === '' || isNaN(score)) {
-        await this.client.from('app_grades').delete()
+        const { error } = await this.client.from('app_grades').delete()
           .match({ class_id: classKey, semester: semester, student_id: studentId, lm_index: lmIndex, tp_index: tpIndex });
+        if (error) console.warn('Gagal hapus nilai di Supabase:', error.message);
       } else {
-        await this.client.from('app_grades').upsert({
+        const { error } = await this.client.from('app_grades').upsert({
           class_id: classKey,
           semester: semester,
           student_id: studentId,
@@ -309,10 +311,24 @@ class SupabaseManager {
           score: Number(score),
           updated_at: new Date().toISOString()
         }, { onConflict: 'class_id,semester,student_id,lm_index,tp_index' });
+        if (error) {
+          if (error.message && error.message.includes('check constraint')) {
+            console.error('Pemberitahuan Supabase: Constraint tp_index perlu diperbarui di Supabase SQL Editor (CHECK tp_index BETWEEN 0 AND 4). Pesan:', error.message);
+          } else {
+            console.warn('Gagal sync nilai ke Supabase:', error.message);
+          }
+        }
       }
     } catch (e) {
       console.warn('Error syncSingleGradeToCloud:', e);
     }
+  }
+
+  /**
+   * Sinkronkan Nilai Sumatif LM (tpIndex = 4) ke Supabase
+   */
+  async syncSumatifGradeToCloud(classKey, semester, studentId, lmIndex, score) {
+    return this.syncSingleGradeToCloud(classKey, semester, studentId, lmIndex, 4, score);
   }
 
   // =========================================================================

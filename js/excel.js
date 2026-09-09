@@ -83,13 +83,14 @@ class ExcelExporter {
       const lm = curriculum[i];
       const lmName = lm ? lm.name.toUpperCase() : `LINGKUP MATERI ${i + 1}`;
       
-      row1.push(lmName, '', '', '');
-      merges.push({ s: { r: headerRow1Index, c: colPointer }, e: { r: headerRow1Index, c: colPointer + 3 } });
+      row1.push(lmName, '', '', '', '');
+      merges.push({ s: { r: headerRow1Index, c: colPointer }, e: { r: headerRow1Index, c: colPointer + 4 } });
 
       for (let tpIdx = 0; tpIdx < 4; tpIdx++) {
         row2.push(`TP ${tpIdx + 1}`);
       }
-      colPointer += 4;
+      row2.push('Sumatif');
+      colPointer += 5;
     }
 
     row1.push('Rata-rata');
@@ -98,10 +99,10 @@ class ExcelExporter {
     // Merge No, Nama Siswa, and Rata-rata vertically
     merges.push({ s: { r: headerRow1Index, c: 0 }, e: { r: headerRow2Index, c: 0 } });
     merges.push({ s: { r: headerRow1Index, c: 1 }, e: { r: headerRow2Index, c: 1 } });
-    merges.push({ s: { r: headerRow1Index, c: 18 }, e: { r: headerRow2Index, c: 18 } });
+    merges.push({ s: { r: headerRow1Index, c: 22 }, e: { r: headerRow2Index, c: 22 } });
 
-    // Merge Title Banner across entire width
-    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 18 } });
+    // Merge Title Banner across entire width (col 0 to 22)
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 22 } });
 
     rows.push(row1);
     rows.push(row2);
@@ -114,6 +115,8 @@ class ExcelExporter {
           const score = storage.getGrade(classKey, semester, student.id, lmIndex, tpIndex);
           dataRow.push(score !== '' ? score : '');
         }
+        const sumatif = storage.getGrade(classKey, semester, student.id, lmIndex, 4);
+        dataRow.push(sumatif !== '' ? sumatif : '');
       }
       const avg = storage.calculateStudentSemesterAverage(classKey, semester, student.id);
       dataRow.push(avg !== null ? Number(avg.toFixed(1)) : '');
@@ -125,13 +128,13 @@ class ExcelExporter {
     rows.push([]);
 
     const sigRow1Idx = rows.length;
-    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', 'Mengetahui,']);
-    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', 'Kepala Sekolah', '', '', '', '', 'Guru Kelas / Mata Pelajaran']);
+    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Mengetahui,']);
+    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Kepala Sekolah', '', '', '', 'Guru Mata Pelajaran']);
     rows.push([]);
     rows.push([]);
     rows.push([]);
-    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', `( ${identity.namaKepalaSekolah || '................................'} )`, '', '', '', '', `( ${identity.namaGuru || '................................'} )`]);
-    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', `NIP. ${identity.nipKepalaSekolah || '....................'}`, '', '', '', '', `NIP. ${identity.nipGuru || '....................'}`]);
+    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', `( ${identity.namaKepalaSekolah || '................................'} )`, '', '', '', `( ${identity.namaGuru || '................................'} )`]);
+    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', `NIP. ${identity.nipKepalaSekolah || '....................'}`, '', '', '', `NIP. ${identity.nipGuru || '....................'}`]);
 
     // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -142,8 +145,12 @@ class ExcelExporter {
       { wch: 5 },  // No
       { wch: 25 }, // Nama Siswa
     ];
-    for (let i = 0; i < 16; i++) {
-      cols.push({ wch: 8 }); // TP columns
+    for (let i = 0; i < 4; i++) {
+      cols.push({ wch: 7 }); // TP 1
+      cols.push({ wch: 7 }); // TP 2
+      cols.push({ wch: 7 }); // TP 3
+      cols.push({ wch: 7 }); // TP 4
+      cols.push({ wch: 10 }); // Sumatif LM
     }
     cols.push({ wch: 12 }); // Rata-rata
     ws['!cols'] = cols;

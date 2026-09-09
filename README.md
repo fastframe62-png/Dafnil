@@ -24,15 +24,17 @@ Aplikasi Penilaian Siswa berbasis **Mobile-First** yang dirancang khusus untuk g
    - **Hapus Semua Siswa per Rombel** tanpa merusak data rombel lain.
 5. **Kurikulum Lingkup Materi & TP**:
    - 8 Lingkup Materi (LM 1–4 untuk Semester 1, LM 5–8 untuk Semester 2).
-   - Masing-masing 4 TP (total 32 TP per tahun ajaran).
+   - Masing-masing 4 TP Formatif + 1 Kolom Nilai Sumatif LM (total 32 TP dan 8 Nilai Sumatif).
    - Judul LM dan TP dapat disesuaikan dan diedit kapan saja.
 6. **Penilaian & Validasi**:
    - Skala nilai 0–100 dengan validasi numerik otomatis dan indikator warna.
-   - Autosave real-time ke penyimpanan lokal browser (`localStorage`).
+   - Kolom khusus **Nilai Sumatif LM** dengan tampilan aksen modern pada setiap LM (LM 1 s/d LM 8).
+   - Autosave real-time ke penyimpanan lokal (`localStorage`) dan auto-sync instan ke database **Supabase** (`app_grades`).
 7. **Rekapitulasi Nilai Akurat**:
-   - Menghitung rata-rata semester secara otomatis dengan mengabaikan nilai TP yang belum diisi (tidak dianggap 0).
+   - Rekap tabel interaktif menampilkan TP 1–4 dan Nilai Sumatif untuk setiap Lingkup Materi.
+   - Menghitung rata-rata semester secara komprehensif mengikutsertakan TP dan Sumatif LM yang telah diisi.
 8. **Export Excel Siap Cetak (`.xlsx`)**:
-   - Export Semester 1, Export Semester 2, atau Export Semua Semester (Multi-sheet).
+   - Export Semester 1, Export Semester 2, atau Export Semua Semester (Multi-sheet) menyertakan kolom TP 1–4 dan Nilai Sumatif LM.
    - Dilengkapi kop identitas sekolah & guru, header bertingkat, orientasi Landscape, auto column width, dan kolom tanda tangan Kepala Sekolah & Guru.
 
 ---
