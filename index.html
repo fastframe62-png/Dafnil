@@ -45,6 +45,8 @@
             </div>
           </div>
           <div class="header-actions">
+            <button class="hdr-icon-btn" id="hdr-btn-undo" title="Undo / Batalkan (Ctrl+Z)" disabled>↩️</button>
+            <button class="hdr-icon-btn" id="hdr-btn-redo" title="Redo / Ulangi (Ctrl+Y)" disabled>↪️</button>
             <button class="class-badge-btn" id="btn-edit-rombel" title="Pilih & Edit Rombel / Kelas">
               <span id="hdr-class-name">📚 Kelas 5 Umar</span>
               <span>✏️</span>
@@ -532,7 +534,34 @@
               <button class="icon-btn close-modal-btn">&times;</button>
             </div>
             
-            <p style="font-size: 0.775rem; color: var(--text-muted);">Pilih Rombel yang ingin diampu:</p>
+            <!-- Top Control Bar: Undo, Redo, Hide/Unhide, and Delete Mode -->
+            <div class="rombel-top-toolbar">
+              <div class="rombel-toolbar-left">
+                <button type="button" class="btn-tool-pill" id="btn-rombel-undo" title="Undo / Batalkan perubahan (Ctrl+Z)" disabled>
+                  <span>↩️</span> <span class="tool-pill-text">Undo</span>
+                </button>
+                <button type="button" class="btn-tool-pill" id="btn-rombel-redo" title="Redo / Ulangi perubahan (Ctrl+Y)" disabled>
+                  <span>↪️</span> <span class="tool-pill-text">Redo</span>
+                </button>
+              </div>
+              <div class="rombel-toolbar-right">
+                <button type="button" class="btn-tool-pill btn-tool-lock" id="btn-toggle-delete-visibility" title="Kunci / Buka Tombol Hapus (Hide / Unhide)">
+                  <span id="rombel-lock-icon">🔒</span>
+                  <span id="rombel-lock-text">Tombol Hapus: Sembunyi (Aman)</span>
+                </button>
+                <button type="button" class="btn-tool-pill btn-tool-danger" id="btn-top-delete-current" style="display: none;" title="Hapus Rombel yang Sedang Aktif">
+                  <span>🗑️</span> <span>Hapus Rombel Ini</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Warning / Safety Notice Banner -->
+            <div class="rombel-safety-banner" id="rombel-safety-banner">
+              <span id="safety-banner-icon">🛡️</span>
+              <span id="safety-banner-text"><b>Mode Aman Aktif:</b> Tombol hapus disembunyikan agar data tidak terpencet.</span>
+            </div>
+
+            <p style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 0.4rem;">Pilih Rombel yang ingin diampu:</p>
             
             <!-- List of available Rombel grouped by grade level -->
             <div id="modal-rombel-list-container" style="display: flex; flex-direction: column; gap: 0.65rem;">

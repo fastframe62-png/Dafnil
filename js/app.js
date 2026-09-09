@@ -174,6 +174,137 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ==========================================================================
+  // UNDO & REDO DATA ENGINE
+  // ==========================================================================
+  function updateHistoryButtonsUI() {
+    const canUndo = appStorage.canUndo();
+    const canRedo = appStorage.canRedo();
+
+    ['hdr-btn-undo', 'btn-rombel-undo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = !canUndo;
+    });
+
+    ['hdr-btn-redo', 'btn-rombel-redo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = !canRedo;
+    });
+  }
+
+  async function performUndo() {
+    if (!appStorage.canUndo()) return;
+    const restored = appStorage.undo();
+    if (restored) {
+      showToast('↩️ Perubahan berhasil dibatalkan (Undo)');
+      syncHeaderInfo();
+      updateHistoryButtonsUI();
+      renderRombelManagerModal();
+      const activeView = document.querySelector('.spa-view.active');
+      if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncAllToCloud(appStorage);
+        } catch (e) {
+          console.warn('Gagal sync ke cloud saat undo:', e);
+        }
+      }
+    }
+  }
+
+  async function performRedo() {
+    if (!appStorage.canRedo()) return;
+    const redone = appStorage.redo();
+    if (redone) {
+      showToast('↪️ Perubahan diulangi (Redo)');
+      syncHeaderInfo();
+      updateHistoryButtonsUI();
+      renderRombelManagerModal();
+      const activeView = document.querySelector('.spa-view.active');
+      if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
+      if (window.appSupabase && window.appSupabase.isConnected) {
+        try {
+          await window.appSupabase.syncAllToCloud(appStorage);
+        } catch (e) {
+          console.warn('Gagal sync ke cloud saat redo:', e);
+        }
+      }
+    }
+  }
+
+  // Bind Header Undo & Redo
+  const hdrUndo = document.getElementById('hdr-btn-undo');
+  const hdrRedo = document.getElementById('hdr-btn-redo');
+  if (hdrUndo) hdrUndo.addEventListener('click', performUndo);
+  if (hdrRedo) hdrRedo.addEventListener('click', performRedo);
+
+  // Bind Modal Undo & Redo
+  const modalUndo = document.getElementById('btn-rombel-undo');
+  const modalRedo = document.getElementById('btn-rombel-redo');
+  if (modalUndo) modalUndo.addEventListener('click', performUndo);
+  if (modalRedo) modalRedo.addEventListener('click', performRedo);
+
+  // Keyboard Shortcuts (Ctrl+Z / Ctrl+Y)
+  document.addEventListener('keydown', (e) => {
+    const isInput = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if (!isInput) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          performRedo();
+        } else {
+          performUndo();
+        }
+      }
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      if (!isInput) {
+        e.preventDefault();
+        performRedo();
+      }
+    }
+  });
+
+  // Hide / Unhide Delete Mode state
+  let isRombelDeleteUnlocked = false;
+
+  const btnToggleDeleteVisibility = document.getElementById('btn-toggle-delete-visibility');
+  if (btnToggleDeleteVisibility) {
+    btnToggleDeleteVisibility.addEventListener('click', () => {
+      isRombelDeleteUnlocked = !isRombelDeleteUnlocked;
+      renderRombelManagerModal();
+      showToast(isRombelDeleteUnlocked ? '🔓 Tombol hapus ditampilkan (Mode Edit)' : '🔒 Tombol hapus disembunyikan (Mode Aman)');
+    });
+  }
+
+  const btnTopDeleteCurrent = document.getElementById('btn-top-delete-current');
+  if (btnTopDeleteCurrent) {
+    btnTopDeleteCurrent.addEventListener('click', async () => {
+      const activeKey = appStorage.getActiveClassKey();
+      const classInfo = appStorage.getClassInfo(activeKey);
+      const allClasses = appStorage.getAllClasses();
+      if (Object.keys(allClasses).length <= 1) {
+        showToast('Rombel utama tidak dapat dihapus.');
+        return;
+      }
+      if (confirm(`Apakah Anda yakin ingin menghapus rombel aktif "${classInfo.name}" beserta ${classInfo.students.length} siswanya?`)) {
+        appStorage.deleteClass(activeKey);
+        renderRombelManagerModal();
+        syncHeaderInfo();
+        updateHistoryButtonsUI();
+        showToast(`Rombel ${classInfo.name} dihapus. Klik "↩️ Undo" jika ingin membatalkan.`);
+        if (window.appSupabase && window.appSupabase.isConnected) {
+          try {
+            await window.appSupabase.deleteClassFromCloud(activeKey);
+          } catch (e) {
+            console.warn('Gagal delete rombel di cloud:', e);
+          }
+        }
+        const activeView = document.querySelector('.spa-view.active');
+        if (activeView) renderCurrentView(activeView.id.replace('view-', ''));
+      }
+    });
+  }
+
   // Header Class Badge Click -> Open Edit / Switch Rombel Modal
   document.getElementById('btn-edit-rombel').addEventListener('click', () => {
     renderRombelManagerModal();
@@ -191,10 +322,47 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderRombelManagerModal() {
+    updateHistoryButtonsUI();
     const activeKey = appStorage.getActiveClassKey();
     const allClasses = appStorage.getAllClasses();
+    const totalClassesCount = Object.keys(allClasses).length;
     const container = document.getElementById('modal-rombel-list-container');
     container.innerHTML = '';
+
+    // Update Hide / Unhide Lock Button & Safety Banner UI
+    const lockIcon = document.getElementById('rombel-lock-icon');
+    const lockText = document.getElementById('rombel-lock-text');
+    const safetyBanner = document.getElementById('rombel-safety-banner');
+    const safetyText = document.getElementById('safety-banner-text');
+    const safetyIcon = document.getElementById('safety-banner-icon');
+    const btnLock = document.getElementById('btn-toggle-delete-visibility');
+    const btnTopDelete = document.getElementById('btn-top-delete-current');
+
+    if (isRombelDeleteUnlocked) {
+      if (lockIcon) lockIcon.textContent = '🔓';
+      if (lockText) lockText.textContent = 'Tombol Hapus: Terbuka (Aktif)';
+      if (btnLock) {
+        btnLock.className = 'btn-tool-pill btn-tool-lock unlocked';
+        btnLock.title = 'Klik untuk mengunci & menyembunyikan tombol hapus';
+      }
+      if (safetyBanner) safetyBanner.className = 'rombel-safety-banner warning';
+      if (safetyIcon) safetyIcon.textContent = '⚠️';
+      if (safetyText) safetyText.innerHTML = '<b>Perhatian:</b> Tombol hapus per rombel telah dimunculkan. Berhati-hatilah.';
+      if (btnTopDelete) {
+        btnTopDelete.style.display = totalClassesCount > 1 ? 'inline-flex' : 'none';
+      }
+    } else {
+      if (lockIcon) lockIcon.textContent = '🔒';
+      if (lockText) lockText.textContent = 'Tombol Hapus: Sembunyi (Aman)';
+      if (btnLock) {
+        btnLock.className = 'btn-tool-pill btn-tool-lock';
+        btnLock.title = 'Klik untuk memunculkan tombol hapus';
+      }
+      if (safetyBanner) safetyBanner.className = 'rombel-safety-banner';
+      if (safetyIcon) safetyIcon.textContent = '🛡️';
+      if (safetyText) safetyText.innerHTML = '<b>Mode Aman Aktif:</b> Tombol hapus disembunyikan agar data tidak terpencet.';
+      if (btnTopDelete) btnTopDelete.style.display = 'none';
+    }
 
     const levels = ['4', '5', '6'];
 
@@ -202,26 +370,50 @@ document.addEventListener('DOMContentLoaded', () => {
       const levelClasses = Object.values(allClasses).filter(c => String(c.level) === String(lvl));
       
       const groupDiv = document.createElement('div');
-      groupDiv.style.marginBottom = '0.5rem';
+      groupDiv.style.marginBottom = '0.65rem';
 
       let itemsHtml = '';
       levelClasses.forEach(c => {
         const isActive = c.id === activeKey;
         itemsHtml += `
-          <div class="glass-card" style="padding: 0.5rem 0.75rem; margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: space-between; border-color: ${isActive ? 'var(--primary-light)' : 'var(--card-border)'}; background: ${isActive ? 'rgba(99, 102, 241, 0.2)' : 'rgba(22, 30, 46, 0.6)'};">
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; cursor: pointer;" class="rombel-select-item" data-key="${c.id}">
-              <span style="font-size: 1rem;">${isActive ? '🔘' : '⚪'}</span>
-              <span style="font-weight: 700; font-size: 0.85rem; color: ${isActive ? '#fff' : 'var(--text-muted)'};">${escapeHtml(c.name)}</span>
-              <span style="font-size: 0.675rem; color: var(--text-dim);">(${c.students.length} Siswa)</span>
+          <div class="rombel-card-block ${isActive ? 'active-rombel' : ''}">
+            <!-- Bagian 1: Pilihan Rombel (Aman dari klik hapus) -->
+            <div class="rombel-select-area rombel-select-item" data-key="${c.id}" title="Klik untuk mengaktifkan ${escapeHtml(c.name)}">
+              <div class="rombel-radio-indicator">${isActive ? '🔘' : '⚪'}</div>
+              <div class="rombel-detail-info">
+                <div class="rombel-title-row">
+                  <span class="rombel-name-text">${escapeHtml(c.name)}</span>
+                  ${isActive ? '<span class="rombel-active-pill">Aktif</span>' : ''}
+                </div>
+                <div class="rombel-sub-row">
+                  <span>👨‍🎓 ${c.students.length} Siswa Terdaftar</span>
+                </div>
+              </div>
             </div>
-            ${Object.keys(allClasses).length > 1 ? `<button class="icon-btn icon-btn-danger delete-rombel-btn" data-key="${c.id}" data-name="${escapeHtml(c.name)}" title="Hapus Rombel">🗑️</button>` : ''}
+
+            <!-- Bagian 2: Seksi Hapus Terpisah per Rombel (Hanya tampil saat Unhide) -->
+            <div class="rombel-actions-bar" style="${isRombelDeleteUnlocked ? 'display: flex;' : 'display: none;'}">
+              <div class="rombel-actions-divider"></div>
+              <div class="rombel-actions-content">
+                <span class="rombel-danger-hint">Aksi Rombel:</span>
+                ${totalClassesCount > 1 ? `
+                  <button type="button" class="btn-delete-rombel-action delete-rombel-btn" data-key="${c.id}" data-name="${escapeHtml(c.name)}" data-students="${c.students.length}">
+                    <span>🗑️</span> Hapus Rombel Ini
+                  </button>
+                ` : `
+                  <span style="font-size: 0.675rem; color: var(--text-dim);">Rombel utama (tidak dapat dihapus)</span>
+                `}
+              </div>
+            </div>
           </div>
         `;
       });
 
       groupDiv.innerHTML = `
-        <div style="font-size: 0.75rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 0.3rem;">📌 KELAS ${lvl}</div>
-        ${itemsHtml || '<div style="font-size: 0.7rem; color: var(--text-dim);">Belum ada rombel.</div>'}
+        <div style="font-size: 0.75rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.3rem;">
+          <span>📌</span> KELAS ${lvl}
+        </div>
+        ${itemsHtml || '<div style="font-size: 0.7rem; color: var(--text-dim); padding: 0.4rem;">Belum ada rombel di kelas ini.</div>'}
       `;
 
       container.appendChild(groupDiv);
@@ -233,6 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appStorage.setActiveClassKey(key);
         closeModal('modal-edit-rombel');
         syncHeaderInfo();
+        updateHistoryButtonsUI();
         showToast(`Aktif: ${appStorage.getClassInfo(key).name}`);
         
         const activeView = document.querySelector('.spa-view.active');
@@ -245,14 +438,20 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const key = btn.getAttribute('data-key');
         const name = btn.getAttribute('data-name');
-        if (confirm(`Apakah Anda yakin ingin menghapus rombel "${name}" beserta seluruh data siswanya?`)) {
+        const studentsCount = btn.getAttribute('data-students');
+        if (confirm(`Apakah Anda yakin ingin menghapus rombel "${name}" beserta seluruh ${studentsCount} data siswanya?`)) {
           appStorage.deleteClass(key);
           renderRombelManagerModal();
           syncHeaderInfo();
-          showToast(`Rombel ${name} dihapus.`);
+          updateHistoryButtonsUI();
+          showToast(`Rombel "${name}" dihapus. Klik "↩️ Undo" jika ingin membatalkan.`);
 
           if (window.appSupabase && window.appSupabase.isConnected) {
-            window.appSupabase.deleteClassFromCloud(key);
+            try {
+              await window.appSupabase.deleteClassFromCloud(key);
+            } catch (err) {
+              console.warn('Gagal delete rombel di cloud:', err);
+            }
           }
 
           const activeView = document.querySelector('.spa-view.active');

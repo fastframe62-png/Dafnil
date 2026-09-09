@@ -176,7 +176,64 @@ const DEFAULT_STATE = {
 
 class StorageManager {
   constructor() {
+    this.undoStack = [];
+    this.redoStack = [];
+    this.maxHistory = 30;
     this.data = this.loadData();
+  }
+
+  recordHistory() {
+    try {
+      const snapshot = JSON.stringify(this.data);
+      if (this.undoStack.length > 0 && this.undoStack[this.undoStack.length - 1] === snapshot) {
+        return;
+      }
+      this.undoStack.push(snapshot);
+      if (this.undoStack.length > this.maxHistory) {
+        this.undoStack.shift();
+      }
+      this.redoStack = [];
+    } catch (e) {
+      console.warn('Gagal record history:', e);
+    }
+  }
+
+  canUndo() {
+    return this.undoStack && this.undoStack.length > 0;
+  }
+
+  canRedo() {
+    return this.redoStack && this.redoStack.length > 0;
+  }
+
+  undo() {
+    if (!this.canUndo()) return null;
+    try {
+      const current = JSON.stringify(this.data);
+      this.redoStack.push(current);
+      const prev = this.undoStack.pop();
+      this.data = JSON.parse(prev);
+      this.saveData();
+      return this.data;
+    } catch (e) {
+      console.error('Error undo:', e);
+      return null;
+    }
+  }
+
+  redo() {
+    if (!this.canRedo()) return null;
+    try {
+      const current = JSON.stringify(this.data);
+      this.undoStack.push(current);
+      const next = this.redoStack.pop();
+      this.data = JSON.parse(next);
+      this.saveData();
+      return this.data;
+    } catch (e) {
+      console.error('Error redo:', e);
+      return null;
+    }
   }
 
   loadData() {
@@ -297,6 +354,7 @@ class StorageManager {
   }
 
   addClass(level, name) {
+    this.recordHistory();
     const cleanName = name.trim();
     const id = 'kelas_' + level + '_' + cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
     
@@ -316,6 +374,7 @@ class StorageManager {
   }
 
   updateRombelName(classKey, newName) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (this.data.classes[key]) {
       this.data.classes[key].name = newName.trim();
@@ -327,6 +386,7 @@ class StorageManager {
     const keys = Object.keys(this.data.classes);
     if (keys.length <= 1) return false;
 
+    this.recordHistory();
     delete this.data.classes[classKey];
     delete this.data.grades[classKey];
 
@@ -345,6 +405,7 @@ class StorageManager {
   }
 
   addStudent(name, classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (!this.data.classes[key]) return null;
 
@@ -358,6 +419,7 @@ class StorageManager {
   }
 
   addStudentsBatch(namesArray, classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (!this.data.classes[key]) return 0;
 
@@ -378,6 +440,7 @@ class StorageManager {
   }
 
   updateStudent(studentId, newName, classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     const students = this.getStudents(key);
     const student = students.find(s => s.id === studentId);
@@ -390,6 +453,7 @@ class StorageManager {
   }
 
   deleteStudent(studentId, classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (!this.data.classes[key]) return false;
 
@@ -406,6 +470,7 @@ class StorageManager {
   }
 
   deleteStudentsBatch(studentIdsArray, classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (!this.data.classes[key]) return 0;
 
@@ -430,6 +495,7 @@ class StorageManager {
   }
 
   deleteAllStudents(classKey) {
+    this.recordHistory();
     const key = classKey || this.getActiveClassKey();
     if (!this.data.classes[key]) return 0;
 
@@ -447,6 +513,7 @@ class StorageManager {
   }
 
   updateLmTitle(lmIndex, newTitle) {
+    this.recordHistory();
     if (this.data.curriculum[lmIndex]) {
       this.data.curriculum[lmIndex].name = newTitle.trim();
       this.saveData();
@@ -454,6 +521,7 @@ class StorageManager {
   }
 
   updateTpTitle(lmIndex, tpIndex, newTitle) {
+    this.recordHistory();
     if (this.data.curriculum[lmIndex] && this.data.curriculum[lmIndex].tps[tpIndex] !== undefined) {
       this.data.curriculum[lmIndex].tps[tpIndex] = newTitle.trim();
       this.saveData();
@@ -472,6 +540,7 @@ class StorageManager {
   }
 
   setGrade(classKey, semester, studentId, lmIndex, tpIndex, score) {
+    this.recordHistory();
     const semKey = `s${semester}`;
     if (!this.data.grades[classKey]) this.data.grades[classKey] = { s1: {}, s2: {} };
     if (!this.data.grades[classKey][semKey]) this.data.grades[classKey][semKey] = {};
