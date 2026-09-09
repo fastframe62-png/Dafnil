@@ -77,9 +77,8 @@ class AtmosphereEngine {
   }
 
   resizeCanvas() {
-    const rect = this.container.getBoundingClientRect();
-    this.width = rect.width || 390;
-    this.height = rect.height || 844;
+    this.width = window.innerWidth || (this.container ? this.container.getBoundingClientRect().width : 390);
+    this.height = window.innerHeight || (this.container ? this.container.getBoundingClientRect().height : 844);
 
     this.canvas.width = this.width * (window.devicePixelRatio || 1);
     this.canvas.height = this.height * (window.devicePixelRatio || 1);
@@ -87,9 +86,14 @@ class AtmosphereEngine {
   }
 
   initPools() {
+    // Responsive particle density based on screen area
+    const area = this.width * this.height;
+    const density = Math.min(Math.max(area / (400 * 850), 0.8), 2.5);
+
     // 1. Stars for Meteor mode
     this.stars = [];
-    for (let i = 0; i < 35; i++) {
+    const starCount = Math.floor(35 * density);
+    for (let i = 0; i < starCount; i++) {
       this.stars.push({
         x: Math.random() * this.width,
         y: Math.random() * this.height,
@@ -106,7 +110,8 @@ class AtmosphereEngine {
 
     // 2. Raindrops for Rainstorm mode
     this.raindrops = [];
-    for (let i = 0; i < 70; i++) {
+    const rainCount = Math.floor(70 * density);
+    for (let i = 0; i < rainCount; i++) {
       this.raindrops.push({
         x: Math.random() * (this.width + 100) - 50,
         y: Math.random() * this.height,
@@ -120,7 +125,8 @@ class AtmosphereEngine {
 
     // 3. Snowflakes for Snow mode
     this.snowflakes = [];
-    for (let i = 0; i < 45; i++) {
+    const snowCount = Math.floor(45 * density);
+    for (let i = 0; i < snowCount; i++) {
       this.snowflakes.push({
         x: Math.random() * this.width,
         y: Math.random() * this.height,

@@ -21,49 +21,40 @@
 </head>
 <body>
 
-  <!-- Desktop Presentation Layer (Smooth vertical scrollable container) -->
-  <div class="desktop-canvas">
+  <!-- Main Application Root (Fullscreen & Responsive) -->
+  <div class="app-root" id="mobile-screen">
     
-    <!-- Smartphone Modern Bezel Frame -->
-    <div class="smartphone-frame">
+    <!-- Glowing Stars / Atmosphere Canvas Background -->
+    <canvas id="stars-canvas"></canvas>
+
+    <!-- Main Application UI -->
+    <div class="app-container">
       
-      <!-- Top Camera Notch / Dynamic Island -->
-      <div class="smartphone-notch">
-        <div class="notch-camera"></div>
-      </div>
-
-      <!-- Mobile Screen (Animated Stars Background clipped inside) -->
-      <div class="mobile-screen" id="mobile-screen">
-        
-        <!-- Glowing Stars Canvas Background -->
-        <canvas id="stars-canvas"></canvas>
-
-        <!-- Main Application UI -->
-        <div class="app-container">
-          
-          <!-- Top Application Header with Custom School Logo -->
-          <header class="app-header">
-            <div class="header-school-info">
-              <div class="app-logo-badge" id="hdr-logo-box">🏫</div>
-              <div class="header-text-block">
-                <span class="header-school-name" id="hdr-school-name">SD NEGERI 01 UPT</span>
-                <div style="display: flex; align-items: center; gap: 0.35rem;">
-                  <span class="header-mapel-info" id="hdr-mapel-info">Bahasa Indonesia</span>
-                  <div class="atmosphere-badge" id="atmosphere-badge" title="Efek Suasana Layar HP (Berganti Otomatis Tiap 10s)">🌠 Meteor</div>
-                  <div class="cloud-badge cloud-offline" id="cloud-sync-badge" title="Status Database Cloud">💾 Lokal</div>
-                </div>
+      <!-- Top Application Header with Custom School Logo -->
+      <header class="app-header">
+        <div class="app-header-inner">
+          <div class="header-school-info">
+            <div class="app-logo-badge" id="hdr-logo-box">🏫</div>
+            <div class="header-text-block">
+              <span class="header-school-name" id="hdr-school-name">SD NEGERI 01 UPT</span>
+              <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                <span class="header-mapel-info" id="hdr-mapel-info">Bahasa Indonesia</span>
+                <div class="atmosphere-badge" id="atmosphere-badge" title="Efek Suasana Layar (Berganti Otomatis Tiap 10s)">🌠 Meteor</div>
+                <div class="cloud-badge cloud-offline" id="cloud-sync-badge" title="Status Database Cloud">💾 Lokal</div>
               </div>
             </div>
-            <div class="header-actions">
-              <button class="class-badge-btn" id="btn-edit-rombel" title="Pilih & Edit Rombel / Kelas">
-                <span id="hdr-class-name">📚 Kelas 5 Umar</span>
-                <span>✏️</span>
-              </button>
-              <div class="semester-badge sem-1-badge" id="hdr-semester-badge" title="Klik untuk berpindah Semester">
-                <span id="hdr-sem-text">📘 S1</span>
-              </div>
+          </div>
+          <div class="header-actions">
+            <button class="class-badge-btn" id="btn-edit-rombel" title="Pilih & Edit Rombel / Kelas">
+              <span id="hdr-class-name">📚 Kelas 5 Umar</span>
+              <span>✏️</span>
+            </button>
+            <div class="semester-badge sem-1-badge" id="hdr-semester-badge" title="Klik untuk berpindah Semester">
+              <span id="hdr-sem-text">📘 S1</span>
             </div>
-          </header>
+          </div>
+        </div>
+      </header>
 
           <!-- Scrollable SPA View Container -->
           <main class="app-view-body">
@@ -493,28 +484,30 @@
 
           </main>
 
-          <!-- Floating Bottom Navigation Bar -->
+          <!-- Floating Bottom Navigation Bar (Centered dock on desktop, full width on mobile) -->
           <nav class="bottom-nav">
-            <button class="nav-item active" data-view="dashboard">
-              <span class="nav-icon" id="nav-icon-dashboard">🏠</span>
-              <span>Beranda</span>
-            </button>
-            <button class="nav-item" data-view="siswa">
-              <span class="nav-icon" id="nav-icon-siswa">👨‍🎓</span>
-              <span>Siswa</span>
-            </button>
-            <button class="nav-item" data-view="penilaian">
-              <span class="nav-icon" id="nav-icon-penilaian">📝</span>
-              <span>Penilaian</span>
-            </button>
-            <button class="nav-item" data-view="rekap">
-              <span class="nav-icon" id="nav-icon-rekap">📊</span>
-              <span>Rekap</span>
-            </button>
-            <button class="nav-item" data-view="pengaturan">
-              <span class="nav-icon" id="nav-icon-pengaturan">⚙️</span>
-              <span>Pengaturan</span>
-            </button>
+            <div class="bottom-nav-inner">
+              <button class="nav-item active" data-view="dashboard">
+                <span class="nav-icon" id="nav-icon-dashboard">🏠</span>
+                <span>Beranda</span>
+              </button>
+              <button class="nav-item" data-view="siswa">
+                <span class="nav-icon" id="nav-icon-siswa">👨‍🎓</span>
+                <span>Siswa</span>
+              </button>
+              <button class="nav-item" data-view="penilaian">
+                <span class="nav-icon" id="nav-icon-penilaian">📝</span>
+                <span>Penilaian</span>
+              </button>
+              <button class="nav-item" data-view="rekap">
+                <span class="nav-icon" id="nav-icon-rekap">📊</span>
+                <span>Rekap</span>
+              </button>
+              <button class="nav-item" data-view="pengaturan">
+                <span class="nav-icon" id="nav-icon-pengaturan">⚙️</span>
+                <span>Pengaturan</span>
+              </button>
+            </div>
           </nav>
 
         </div> <!-- /.app-container -->
@@ -747,10 +740,7 @@
           </div>
         </div>
 
-      </div> <!-- /.mobile-screen -->
-    </div> <!-- /.smartphone-frame -->
-
-  </div> <!-- /.desktop-canvas -->
+  </div> <!-- /.app-root -->
 
   <!-- App Scripts -->
   <script src="js/storage.js"></script>
